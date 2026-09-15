@@ -49,7 +49,7 @@ Link the relevant source files, contracts, endpoints, applications, clients, dep
 
 ### Proof of Concept
 
-Provide the applicable evidence required by [poc-guidelines.md](poc-guidelines.md) and the live program. A prose sequence, pseudocode, project source copied without an exploit, or an empty PoC field is insufficient when runnable proof is required.
+Provide the applicable evidence required by the PoC-guideline reference routed from the entrypoint and the live program. A prose sequence, pseudocode, project source copied without an exploit, or an empty PoC field is insufficient when runnable proof is required.
 
 ## Rejection-risk checklist
 

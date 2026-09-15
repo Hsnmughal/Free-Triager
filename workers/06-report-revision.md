@@ -2,7 +2,7 @@
 
 Run only after a completed verdict and an explicit user request to revise the report.
 
-For Immunefi, read `../platforms/immunefi/report-template.md` and `../platforms/immunefi/poc-guidelines.md` before revising.
+For Immunefi, use the report-template and PoC-guideline references routed from the entrypoint before revising.
 
 Inputs:
 

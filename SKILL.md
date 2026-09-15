@@ -29,6 +29,40 @@ If the invocation supplies `resume=<absolute session directory>`, it is a dynami
 5. The orchestrator performs coordination only. Delegate each phase to an isolated worker when the harness supports workers/subagents. If isolated workers are unavailable, execute the phase logic serially using one compact in-memory state; do not simulate workers with separate long transcripts or repeat shared inputs.
 6. In dynamic mode, the orchestrator alone appends validated worker results directly to `session.jsonl`. Workers never write the canonical ledger or intermediate payload files.
 
+## Reference routing
+
+All supporting instructions are linked directly from this entrypoint. Read only the references required for the current platform, phase, and technical classification.
+
+### Phase workers
+
+- `prior_art`: [workers/01-prior-art.md](workers/01-prior-art.md)
+- `program_policy`: [workers/02-program-policy.md](workers/02-program-policy.md)
+- `eligibility_gate`: [workers/03-eligibility-gate.md](workers/03-eligibility-gate.md)
+- technology-neutral classifier used by technical validation: [workers/04-target-classifier.md](workers/04-target-classifier.md)
+- `technical_validation`: [workers/04-technical-validation.md](workers/04-technical-validation.md)
+- `verdict_and_improvement`: [workers/05-verdict-and-improvement.md](workers/05-verdict-and-improvement.md)
+- optional, explicitly authorized `report_revision`: [workers/06-report-revision.md](workers/06-report-revision.md)
+
+### Technical profiles
+
+After classification, read only the applicable profile or profiles:
+
+- smart contracts: [core/technical-profiles/smart-contract.md](core/technical-profiles/smart-contract.md)
+- web and applications: [core/technical-profiles/web-app.md](core/technical-profiles/web-app.md)
+- Blockchain/DLT: [core/technical-profiles/blockchain-dlt.md](core/technical-profiles/blockchain-dlt.md)
+- cross-category findings: [core/technical-profiles/mixed.md](core/technical-profiles/mixed.md), in addition to each applicable category profile
+
+### Immunefi adapter references
+
+When the active adapter is Immunefi, use these references only in the named phases:
+
+- adapter interpretation: [platforms/immunefi/triage-rules.md](platforms/immunefi/triage-rules.md) during program research and policy extraction
+- PoC requirements: [platforms/immunefi/poc-guidelines.md](platforms/immunefi/poc-guidelines.md) during policy extraction, technical validation, and an authorized revision
+- report fields and structure: [platforms/immunefi/report-template.md](platforms/immunefi/report-template.md) during verdict/improvement and an authorized revision
+- observed automated-triage checks: [platforms/immunefi/automated-triage-readiness.md](platforms/immunefi/automated-triage-readiness.md) during verdict/improvement and an authorized revision
+
+For dynamic sessions, enforce [schemas/session-event.schema.json](schemas/session-event.schema.json) through the session helper or an equivalent implementation when Node is unavailable.
+
 ## Modes
 
 - `dynamic`: create or resume persistent state, complete exactly one pending phase, append one checkpoint, print the resume handoff, and stop. A fresh chat must be able to continue from disk alone. On every `resume=<session-dir>` invocation, re-open the saved program URL before running the pending phase.

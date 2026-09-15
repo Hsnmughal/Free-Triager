@@ -1,5 +1,21 @@
 # Orchestrator Workflow
 
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Intake and mode selection](#intake-and-mode-selection)
+- [Oneshot protocol: memory only](#oneshot-protocol-memory-only)
+- [Dynamic initialization](#dynamic-initialization)
+- [Dynamic resume protocol](#dynamic-resume-protocol)
+- [State machine](#state-machine)
+- [Phase dispatch](#phase-dispatch)
+  - [Prior art](#1-prior-art)
+  - [Program policy](#2-program-policy)
+  - [Eligibility gate](#3-eligibility-gate)
+  - [Technical validation](#4-technical-validation)
+  - [Verdict and improvement](#5-verdict-and-improvement)
+- [Final verdict vocabulary](#final-verdict-vocabulary)
+
 ## Purpose
 
 Determine whether a report is likely to be accepted under the named program's current rules, and identify the smallest truthful changes that reduce rejection risk.
@@ -44,7 +60,7 @@ node <skill>/scripts/session.mjs init \
 
 For pasted reports, materialize the report only as part of dynamic session initialization. The session directory may contain confidential material and must remain ignored by version control.
 
-Without Node, create the same dynamic-only directory structure and `init` event defined by `../schemas/session-event.schema.json`. Writes must be atomic, sequence numbers contiguous, and phase transitions identical to `scripts/session.mjs`.
+Without Node, create the same dynamic-only directory structure and `init` event defined by the session-event schema routed from the entrypoint. Writes must be atomic, sequence numbers contiguous, and phase transitions identical to the session helper.
 
 After initialization, open the saved program URL, run only `prior_art`, append its checkpoint, print the resume flag, and halt.
 
@@ -102,7 +118,7 @@ Use `needs_information` for missing or ambiguous evidence that could materially 
 
 ### 1. Prior art
 
-Read `../workers/01-prior-art.md`. Inspect the program's disclosed known issues, linked issue trackers, prior audits, disclosures, and documented mitigations. Preserve any project explanation for leaving an issue unfixed.
+Use the prior-art worker instructions routed from the entrypoint. Inspect the program's disclosed known issues, linked issue trackers, prior audits, disclosures, and documented mitigations. Preserve any project explanation for leaving an issue unfixed.
 
 Required result fields:
 
@@ -113,13 +129,13 @@ Required result fields:
 
 ### 2. Program policy
 
-Read `../workers/02-program-policy.md` and the active platform adapter. Extract assets, impacts, exclusions, selected severity system, PoC requirements, primacy rules when present, reward constraints relevant to eligibility, and other submission-affecting terms. Preserve category-specific rules for smart contracts, web/apps, and Blockchain/DLT rather than merging them.
+Use the program-policy worker instructions and active platform adapter routed from the entrypoint. Extract assets, impacts, exclusions, selected severity system, PoC requirements, primacy rules when present, reward constraints relevant to eligibility, and other submission-affecting terms. Preserve category-specific rules for smart contracts, web/apps, and Blockchain/DLT rather than merging them.
 
 Every extracted rule must carry source URL, retrieval timestamp, exact or tightly paraphrased rule text, and whether it is program-specific, platform-default, or user-supplied. Absence of a Primacy of Rules or Primacy of Impact clause is a recorded absence, not a missing-input error; apply ordinary asset and impact scope instead.
 
 ### 3. Eligibility gate
 
-Read `../workers/03-eligibility-gate.md`. Apply the gates across every report category plausibly implicated by the program asset and claimed impact; do not force an ambiguous or mixed report into one category merely to reject it. Apply gates in this exact order:
+Use the eligibility-gate worker instructions routed from the entrypoint. Apply the gates across every report category plausibly implicated by the program asset and claimed impact; do not force an ambiguous or mixed report into one category merely to reject it. Apply gates in this exact order:
 
 1. Known issue or duplicate classification.
 2. Asset scope.
@@ -146,7 +162,7 @@ Do not treat Primacy of Impact as universal. Use only the severities and impact 
 
 ### 4. Technical validation
 
-Read `../workers/04-technical-validation.md`. It first runs the technology-neutral target classifier, then loads only the required smart-contract, web/app, Blockchain/DLT, or mixed technical profiles. Validate citations, execution path, preconditions, violated invariant, exploitability, claimed impact, and PoC against the available evidence and the program's category-specific requirements.
+Use the technical-validation worker instructions routed from the entrypoint. It first runs the technology-neutral target classifier, then loads only the required smart-contract, web/app, Blockchain/DLT, or mixed technical profiles. Validate citations, execution path, preconditions, violated invariant, exploitability, claimed impact, and PoC against the available evidence and the program's category-specific requirements.
 
 ```text
 shared policy + eligibility
@@ -162,7 +178,7 @@ Classify each material claim as `proven`, `supported`, `uncertain`, or `refuted`
 
 ### 5. Verdict and improvement
 
-Read `../workers/05-verdict-and-improvement.md`. Resolve validity, eligibility, severity, rejection risk, and precise report improvements using the classified target category and technical profile results. Apply public standards and any user-supplied private guidance with separate provenance.
+Use the verdict-and-improvement worker instructions routed from the entrypoint. Resolve validity, eligibility, severity, rejection risk, and precise report improvements using the classified target category and technical profile results. Apply public standards and any user-supplied private guidance with separate provenance.
 
 For platforms with automated front-line triage, issue two independent assessments:
 
@@ -173,7 +189,7 @@ The submission recommendation combines both but never rewrites one as the other.
 
 Default behavior is review-only. If the user explicitly asks for changes, run a separate `report_revision` action after the verdict and write a new file unless overwrite was explicitly requested. This authorized revision is not a triage checkpoint; in a later oneshot turn, request the original report and verdict again if they are no longer in context.
 
-For revision, read `../workers/06-report-revision.md`. It is outside the mandatory five-phase triage path and must never run from inferred consent.
+For revision, use the report-revision worker instructions routed from the entrypoint. It is outside the mandatory five-phase triage path and must never run from inferred consent.
 
 ## Final verdict vocabulary
 

@@ -2,14 +2,14 @@
 
 Goal: issue the final pre-submission assessment and improve acceptance odds without overstating the finding.
 
-For Immunefi, read `../platforms/immunefi/report-template.md` and check every applicable dashboard field and rejection-risk item.
+For Immunefi, use the report-template reference routed from the entrypoint and check every applicable dashboard field and rejection-risk item.
 
-Also read `../platforms/immunefi/automated-triage-readiness.md`. Use its observed checks as calibration evidence, not as a guaranteed or exhaustive policy.
+Also use the automated-triage-readiness reference routed from the entrypoint. Treat its observed checks as calibration evidence, not as a guaranteed or exhaustive policy.
 
 Resolve:
 
 - target category or mixed boundary, derived technology context, and profile-specific technical result;
-- final verdict vocabulary from `core/workflow.md`;
+- final verdict vocabulary from the orchestrator workflow;
 - applicable severity and the exact impact mapping;
 - exploit likelihood/preconditions as a separate axis;
 - strongest rejection reasons in priority order;

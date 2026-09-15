@@ -2,16 +2,13 @@
 
 Goal: determine whether the report's exploit and impact hold in the overall program and technological context under realistic stated conditions.
 
-For Immunefi, read `../platforms/immunefi/poc-guidelines.md` and apply only the requirements activated by the live program-policy checkpoint.
+For Immunefi, use the PoC-guideline reference routed from the entrypoint and apply only the requirements activated by the live program-policy checkpoint.
 
 ## Technology-neutral routing
 
-1. Read `04-target-classifier.md` and derive `target_classification` from the report, program policy, eligibility result, and available evidence.
-2. Read only the profiles named by `target_classification.required_profiles`:
-   - `../core/technical-profiles/smart-contract.md`;
-   - `../core/technical-profiles/web-app.md`;
-   - `../core/technical-profiles/blockchain-dlt.md`.
-3. If more than one category is material, also read `../core/technical-profiles/mixed.md` and validate the cross-category boundary.
+1. Use the target-classifier instructions routed from the entrypoint and derive `target_classification` from the report, program policy, eligibility result, and available evidence.
+2. Read only the technical profiles routed from the entrypoint and named by `target_classification.required_profiles`.
+3. If more than one category is material, also use the mixed profile and validate the cross-category boundary.
 4. Derive languages, runtimes, frameworks, protocols, versions, configuration, and tools from the evidence. Never reject a claim because its technology is absent from a predefined list.
 
 Validate:

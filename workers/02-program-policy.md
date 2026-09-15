@@ -2,7 +2,7 @@
 
 Goal: produce a source-grounded eligibility and severity policy for this exact program.
 
-For Immunefi, read `../platforms/immunefi/poc-guidelines.md` to extract the applicable platform baseline, but first determine from the fresh program evidence supplied for this invocation whether a PoC is required and whether program-specific terms override it. Do not re-open a page already present in the supplied evidence map.
+For Immunefi, use the PoC-guideline reference routed from the entrypoint to extract the applicable platform baseline, but first determine from the fresh program evidence supplied for this invocation whether a PoC is required and whether program-specific terms override it. Do not re-open a page already present in the supplied evidence map.
 
 Extract:
 

@@ -34,9 +34,9 @@ Program-disclosed known issues may include bugs the project knows about but has 
 
 Read the exact program requirement. Some programs require executable code or a particular demonstration; do not substitute a generic remembered guideline. User-provided private PoC, anti-bot, or traffic guidance may be applied only as `user_supplied_private` evidence.
 
-For the supplied platform-level PoC checklist, read [poc-guidelines.md](poc-guidelines.md) only during policy extraction and technical PoC validation. For report structure and field placement, read [report-template.md](report-template.md) only during verdict/improvement or an authorized revision.
+Use the platform-level PoC checklist routed from the entrypoint only during policy extraction and technical PoC validation. Use the report-template reference only during verdict/improvement or an authorized revision.
 
-For the observed front-line triage checks, read [automated-triage-readiness.md](automated-triage-readiness.md) only during final readiness assessment or report revision. Do not treat a single observed transcript as universal policy.
+Use the observed front-line triage reference routed from the entrypoint only during final readiness assessment or report revision. Do not treat a single observed transcript as universal policy.
 
 ## Severity
 
