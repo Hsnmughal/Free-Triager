@@ -1,0 +1,38 @@
+schema_version: "1.0"
+platform: "immunefi"
+url_hosts:
+  - "immunefi.com"
+program_page_sections:
+  - "information"
+  - "scope"
+target_categories:
+  - "smart_contract"
+  - "web_app"
+  - "blockchain_dlt"
+mixed_category_policy: "Classify each material boundary and apply the program rule governing each claimed impact."
+technical_profiles:
+  smart_contract: "core/technical-profiles/smart-contract.md"
+  web_app: "core/technical-profiles/web-app.md"
+  blockchain_dlt: "core/technical-profiles/blockchain-dlt.md"
+  mixed: "core/technical-profiles/mixed.md"
+program_source_refresh:
+  oneshot: "once_at_start_of_invocation"
+  dynamic: "after_init_and_before_each_resumed_phase"
+rule_precedence:
+  - "program_specific"
+  - "program_selected_severity_system"
+  - "platform_default_when_program_silent"
+known_issue_sources:
+  - "program_public_disclosure"
+  - "program_linked_issue_trackers"
+  - "program_linked_audits_and_disclosures"
+primacy_modes:
+  - "primacy_of_rules"
+  - "primacy_of_impact"
+private_guidance_policy: "Accept only user-supplied content and preserve its provenance."
+references:
+  instructions: "triage-rules.md"
+  poc_guidelines: "poc-guidelines.md"
+  report_template: "report-template.md"
+  automated_triage_readiness: "automated-triage-readiness.md"
+  calibration_cases: "calibration/cases.jsonl"

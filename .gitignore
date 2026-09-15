@@ -1,0 +1,29 @@
+# Free Triager runtime state and confidential reports
+.free-triager/
+reports/
+sessions/
+
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies, coverage, caches, and temporary files
+node_modules/
+coverage/
+.cache/
+tmp/
+temp/
+*.tmp
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

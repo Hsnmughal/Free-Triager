@@ -1,0 +1,52 @@
+name: Bug report
+description: Report incorrect behavior in Free Triager
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include undisclosed vulnerabilities, private reports, credentials, or confidential platform communications.
+  - type: input
+    id: version
+    attributes:
+      label: Free Triager version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Agent or provider
+      placeholder: Codex, Claude Code, Cursor, or another provider
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Workflow mode
+      options:
+        - oneshot
+        - dynamic
+        - not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Use synthetic or fully anonymized inputs.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true

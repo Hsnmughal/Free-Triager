@@ -1,0 +1,7 @@
+interface:
+  display_name: "Free Triager"
+  short_description: "Pre-submission bug bounty report triage"
+  default_prompt: "Use $free-triager to triage my vulnerability report against the live program rules and reduce rejection risk."
+
+policy:
+  allow_implicit_invocation: true

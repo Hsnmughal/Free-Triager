@@ -1,0 +1,49 @@
+schema_version: "1.0"
+id: "free-triager"
+entrypoint: "SKILL.md"
+platform_discovery: "platforms/<platform>/adapter.yaml"
+workflow:
+  phases:
+    - "prior_art"
+    - "program_policy"
+    - "eligibility_gate"
+    - "technical_validation"
+    - "verdict_and_improvement"
+technical_routing:
+  classifier: "workers/04-target-classifier.md"
+  profiles:
+    smart_contract: "core/technical-profiles/smart-contract.md"
+    web_app: "core/technical-profiles/web-app.md"
+    blockchain_dlt: "core/technical-profiles/blockchain-dlt.md"
+    mixed: "core/technical-profiles/mixed.md"
+  technology_discovery: "derive_from_report_program_and_evidence"
+modes:
+  oneshot:
+    persistence: "forbidden"
+    program_source_refresh: "once_at_start"
+    state: "current_context_only"
+  dynamic:
+    persistence: "required"
+    program_source_refresh: "on_init_and_before_each_resumed_phase"
+    state: "append_only_jsonl"
+    resume_flag: "resume=<absolute-session-directory>"
+capabilities:
+  web_read:
+    requirement: "required"
+    purpose: "Read live program evidence once per oneshot invocation or before each dynamic phase invocation."
+  filesystem_read:
+    requirement: "required"
+    purpose: "Read the report and available source, request, trace, configuration, protocol, or binary evidence; read a session ledger only in dynamic mode."
+  filesystem_write:
+    requirement: "conditional"
+    purpose: "Required for dynamic checkpoints and an explicitly authorized report revision; forbidden for oneshot triage."
+  node_runtime:
+    requirement: "conditional"
+    purpose: "Run the deterministic session ledger helper in dynamic mode only."
+    fallback: "Use harness filesystem tools to append the same session-event schema and enforce identical transitions."
+  code_execution:
+    requirement: "conditional"
+    purpose: "Validate a PoC when required, safe, and locally reproducible."
+  isolated_workers:
+    requirement: "optional"
+    fallback: "Execute phases serially using one compact in-memory state; do not emit simulated worker transcripts or repeat shared inputs."

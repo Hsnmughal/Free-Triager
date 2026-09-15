@@ -1,0 +1,42 @@
+name: Assessment feedback
+description: Report a false positive, false negative, or unclear triage decision
+title: "[Assessment]: "
+labels:
+  - assessment-feedback
+body:
+  - type: markdown
+    attributes:
+      value: Share only synthetic, public, or fully anonymized evidence. Never disclose an active vulnerability report here.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feedback category
+      options:
+        - False rejection risk
+        - Missed rejection risk
+        - Incorrect technical assessment
+        - Incorrect scope or rules assessment
+        - Incorrect severity assessment
+        - Unclear explanation
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: Immunefi
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized_case
+    attributes:
+      label: Sanitized case
+      description: Describe the relevant facts without exposing confidential details.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Expected assessment and supporting evidence
+    validations:
+      required: true

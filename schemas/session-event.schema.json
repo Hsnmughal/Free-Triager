@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.free-triager/session-event.schema.json",
+  "title": "Free Triager session event",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "seq",
+    "timestamp",
+    "session_id",
+    "platform",
+    "mode",
+    "phase",
+    "status",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "seq": { "type": "integer", "minimum": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "platform": { "type": "string", "minLength": 1 },
+    "mode": {
+      "const": "dynamic",
+      "description": "Only dynamic runs may have persisted session events."
+    },
+    "phase": {
+      "enum": [
+        "init",
+        "prior_art",
+        "program_policy",
+        "eligibility_gate",
+        "technical_validation",
+        "verdict_and_improvement",
+        "report_revision"
+      ]
+    },
+    "status": {
+      "enum": ["complete", "terminal", "needs_information", "error"]
+    },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

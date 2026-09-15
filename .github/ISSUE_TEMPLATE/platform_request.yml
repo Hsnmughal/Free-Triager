@@ -1,0 +1,25 @@
+name: Platform adapter request
+description: Propose support for another bug bounty platform
+title: "[Platform]: "
+labels:
+  - platform-request
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: Platform name
+    validations:
+      required: true
+  - type: input
+    id: public_docs
+    attributes:
+      label: Public rules or documentation URL
+    validations:
+      required: true
+  - type: textarea
+    id: differences
+    attributes:
+      label: Important platform-specific behavior
+      description: Describe scope, severity, proof-of-concept, report, or triage differences supported by public sources.
+    validations:
+      required: true

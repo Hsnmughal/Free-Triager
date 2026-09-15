@@ -1,0 +1,29 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check session helper syntax
+        run: node --check scripts/session.mjs
+
+      - name: Run session tests
+        run: node --test tests/session.test.mjs
+
+      - name: Validate JSON schema syntax
+        run: node -e "JSON.parse(require('node:fs').readFileSync('schemas/session-event.schema.json', 'utf8'))"
