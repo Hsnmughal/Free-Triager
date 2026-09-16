@@ -13,7 +13,8 @@
   - [Program policy](#2-program-policy)
   - [Eligibility gate](#3-eligibility-gate)
   - [Technical validation](#4-technical-validation)
-  - [Verdict and improvement](#5-verdict-and-improvement)
+  - [Red-Team validation](#5-red-team-validation)
+  - [Verdict and improvement](#6-verdict-and-improvement)
 - [Final verdict vocabulary](#final-verdict-vocabulary)
 
 ## Purpose
@@ -100,6 +101,7 @@ init
   -> program_policy
   -> eligibility_gate
   -> technical_validation
+  -> red_team_validation
   -> verdict_and_improvement
   -> complete
 ```
@@ -176,9 +178,23 @@ shared policy + eligibility
 
 Classify each material claim as `proven`, `supported`, `uncertain`, or `refuted`. A broken PoC or impossible path may produce `invalid_claim`; missing evidence that is actually required to establish the claim produces `needs_information`. Source-code absence alone is not a failure for a reproducible black-box report.
 
-### 5. Verdict and improvement
+### 5. Red-Team validation
 
-Use the verdict-and-improvement worker instructions routed from the entrypoint. Resolve validity, eligibility, severity, rejection risk, and precise report improvements using the classified target category and technical profile results. Apply public standards and any user-supplied private guidance with separate provenance.
+Use the red-team-validation worker instructions routed from the entrypoint. Every finding that reaches this stage is challenged before it can be accepted; the phase is not skipped for findings that look obviously valid.
+
+The stage begins from the assumption that the finding is incorrect and looks for the strongest technically credible argument against it. It runs a Prosecutor pass, a Defender pass, and an Adjudication that evaluates the evidence rather than counting arguments. It challenges reachability, preconditions, privileges, state, and impact; it builds an explicit assumption ledger and a minimal attack path whose unsupported links are visible; and it challenges the claimed severity separately from the technical claim.
+
+The existing phases keep their existing concerns. This phase adds adversarial validation only: it does not re-open program policy, re-run eligibility, or re-derive the technical analysis. It receives the `technical_validation` result and adjudicates it.
+
+Evidence discipline is mandatory. `UNSUPPORTED` requires contradicting evidence; `UNKNOWN` records insufficient evidence together with the question that would resolve it; `IMPOSSIBLE` requires strong evidence that the condition cannot occur. Lack of proof is not proof of impossibility, and a speculative counterargument never defeats a finding.
+
+Required result fields: `challenged_finding`, `status`, `prosecutor`, `defender`, `challenge_matrix`, `assumptions`, `attack_path`, `counterexamples`, `decisive_facts`, `unresolved_questions`, `severity_challenge`, `adjudication`, and `red_team_verdict`.
+
+In dynamic mode the session helper enforces the structural and epistemic rules of this phase through `scripts/red-team.mjs`. In oneshot mode apply the same rules without a ledger.
+
+### 6. Verdict and improvement
+
+Use the verdict-and-improvement worker instructions routed from the entrypoint. Resolve validity, eligibility, severity, rejection risk, and precise report improvements using the classified target category, the technical profile results, and the Red-Team adjudication. Apply public standards and any user-supplied private guidance with separate provenance.
 
 For platforms with automated front-line triage, issue two independent assessments:
 
@@ -186,6 +202,8 @@ For platforms with automated front-line triage, issue two independent assessment
 2. human-review technical and policy merits.
 
 The submission recommendation combines both but never rewrites one as the other. A valid report that is bot-fragile should be `ready_with_changes`, not `invalid_claim`.
+
+Carry the Red-Team result into the verdict rather than re-deciding it. A surviving technical claim whose severity claim was not supported stays a valid finding with reduced `severity_confidence`. Unresolved assumptions from the adversarial ledger are disclosed in the assessment, not silently resolved.
 
 Default behavior is review-only. If the user explicitly asks for changes, run a separate `report_revision` action after the verdict and write a new file unless overwrite was explicitly requested. This authorized revision is not a triage checkpoint; in a later oneshot turn, request the original report and verdict again if they are no longer in context.
 
@@ -200,5 +218,7 @@ For revision, use the report-revision worker instructions routed from the entryp
 - `out_of_scope`: neither normal asset/impact scope nor an applicable Primacy of Impact path covers it.
 - `rules_violation`: conflicts with a decisive program or platform rule.
 - `invalid_claim`: the claimed exploit or impact is refuted under the stated conditions.
+
+A finding is `invalid_claim` only when decisive evidence refutes it. A finding whose required condition is merely unestablished is `needs_information`.
 
 The skill provides a reasoned pre-submission assessment, not a guarantee of platform or project acceptance.

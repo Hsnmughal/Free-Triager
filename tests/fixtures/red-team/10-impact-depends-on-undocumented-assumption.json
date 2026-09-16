@@ -1,0 +1,410 @@
+{
+  "schema_version": "1.0",
+  "case_id": "10-impact-depends-on-undocumented-assumption",
+  "title": "Finding whose impact depends on an undocumented assumption",
+  "scenario": "The queue reordering is demonstrated, but the claimed loss only materialises if the off-chain settlement keeper does not re-run within the same epoch. The keeper's retry behavior is not documented anywhere in the program's public material.",
+  "exercises": [
+    "an undocumented behavioral dependency is recorded as unknown, not resolved by assumption",
+    "the unresolved assumption is surfaced rather than folded into the verdict"
+  ],
+  "expectation": {
+    "status": "insufficient_evidence",
+    "red_team_verdict": "needs_information",
+    "adjudication": {
+      "technical_claim": "PARTIALLY_SUPPORTED",
+      "attack_path": "PARTIALLY_SUPPORTED",
+      "impact": "UNKNOWN",
+      "severity_claim": "UNKNOWN"
+    },
+    "counterargument_defeats_finding": "undetermined",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "UNPROVEN",
+      "A4": "UNKNOWN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "UNKNOWN",
+      "UNKNOWN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "plausible"
+    },
+    "unresolved_assumptions": [
+      "A3",
+      "A4"
+    ],
+    "severity_support": "UNKNOWN"
+  },
+  "mutations": [
+    {
+      "name": "an undocumented dependency does not become a refutation",
+      "path": "adjudication.impact",
+      "value": "UNSUPPORTED",
+      "expect_error": "adjudication.impact is UNSUPPORTED but no decisive or strong counterexample with evidence targets it"
+    },
+    {
+      "name": "an unproven decisive assumption cannot be promoted to a supported technical claim",
+      "path": "adjudication.technical_claim",
+      "value": "SUPPORTED",
+      "expect_error": "technical_claim is SUPPORTED but decisive assumption A3 is UNPROVEN"
+    },
+    {
+      "name": "unresolved assumptions must stay visible in the adjudication",
+      "path": "adjudication.unresolved_assumptions",
+      "value": [
+        "A3"
+      ],
+      "expect_error": "unresolved_assumptions must list unresolved assumption A4"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Permanent loss of queued withdrawals through reordering",
+      "claimed_severity": "High"
+    },
+    "status": "insufficient_evidence",
+    "prosecutor": {
+      "strongest_claim": "Reordering the withdrawal queue pushes an entry past its expiry, and the expired entry is never settled.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Queue.sol:188 reorder() accepts arbitrary index permutations"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can call reorder() while the queue is open.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Queue.sol:180"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Queue.reorder(uint256[])",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Queue.sol:180"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "A withdrawal entry sits close to its expiry block.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "entry 913 expires at block 21301990, 42 blocks out"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "reorder() moves the entry behind others so it is not reached before expiry.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testReorderPushesPastExpiry"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "A queued withdrawal is settled before it expires.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Queue.sol:210 expired entries are skipped"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The expired withdrawal is permanently lost to its owner.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "An off-chain keeper may re-run settlement within the same epoch and clear the entry before expiry, in which case no loss occurs.",
+      "evidence": [
+        {
+          "kind": "external",
+          "ref": "program docs list a settlement keeper but not its retry policy"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "impact",
+          "statement": "If the keeper retries within the epoch the entry settles normally and the claimed loss never occurs.",
+          "strength": "strong",
+          "targets": [
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "external",
+              "ref": "docs/architecture.md section 6 mentions the keeper without a retry policy"
+            }
+          ]
+        },
+        {
+          "axis": "state",
+          "statement": "The expiry window may be longer than one keeper interval, making the race unwinnable.",
+          "strength": "plausible",
+          "targets": [
+            "impact"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "reachability",
+          "statement": "reorder() may be rate limited per address.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "reorder() is permissionless and applies no rate limit.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Queue.sol:180-196"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The near-expiry entry state is observable on chain.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "entry 913 expires at block 21301990"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No privilege is required to reorder.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Queue.sol:180"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The reordering itself is demonstrated on a fork.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReorderPushesPastExpiry"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "Whether expiry causes permanent loss depends on undocumented keeper retry behavior.",
+        "support": "UNKNOWN",
+        "evidence": [
+          {
+            "kind": "external",
+            "ref": "docs/architecture.md section 6"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "Any address can reorder the queue.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Queue.sol:180"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "Reordering can push an entry past its expiry block.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReorderPushesPastExpiry"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "The off-chain keeper does not re-run settlement before expiry.",
+        "status": "UNPROVEN",
+        "decisive": true,
+        "evidence": []
+      },
+      {
+        "id": "A4",
+        "statement": "An expired entry cannot be re-queued by its owner.",
+        "status": "UNKNOWN",
+        "decisive": false,
+        "evidence": []
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker observes an entry near expiry.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "entry 913 expires at block 21301990"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "permissionless",
+        "transition": "Attacker reorders the queue to push the entry back.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReorderPushesPastExpiry"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "external_dependency",
+        "transition": "Keeper does not settle the entry before expiry.",
+        "status": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "step": 4,
+        "actor_class": "protocol_controlled",
+        "transition": "Entry expires and is skipped permanently.",
+        "status": "UNKNOWN",
+        "evidence": []
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "A keeper retry inside the epoch would settle the entry before expiry and eliminate the loss; the retry policy is not published anywhere in the program material.",
+        "strength": "plausible",
+        "evidence": [
+          {
+            "kind": "external",
+            "ref": "docs/architecture.md section 6"
+          }
+        ],
+        "function": "off-chain settlement keeper",
+        "condition": "retry interval < expiry window"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "reorder() accepts arbitrary permutations from any caller.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Queue.sol:188"
+          }
+        ]
+      },
+      {
+        "fact": "Expired entries are skipped by the settlement loop.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Queue.sol:210"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [
+      {
+        "id": "Q1",
+        "question": "Does the settlement keeper retry within the same epoch, and with what interval?",
+        "blocks": [
+          "impact",
+          "severity_claim"
+        ],
+        "how_to_resolve": "Ask the program for the keeper retry policy, or observe keeper transactions across several epochs on chain."
+      },
+      {
+        "id": "Q2",
+        "question": "Can the owner of an expired entry re-queue it?",
+        "blocks": [
+          "impact"
+        ],
+        "how_to_resolve": "Read the queue re-entry path, or ask the program whether expired entries are recoverable."
+      }
+    ],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "Reordering past expiry is demonstrated; permanent loss is not",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNKNOWN",
+      "reproducible": "yes",
+      "bounded": "unknown",
+      "reversible": "unknown",
+      "persistent": "unknown",
+      "attacker_requirements": "None beyond gas.",
+      "policy_alignment": "The program's permanent freezing tier requires irreversibility, which the current evidence does not establish.",
+      "unproven_dependencies": [
+        "Keeper does not retry within the epoch",
+        "Expired entries cannot be re-queued"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "PARTIALLY_SUPPORTED",
+      "attack_path": "PARTIALLY_SUPPORTED",
+      "impact": "UNKNOWN",
+      "severity_claim": "UNKNOWN",
+      "strongest_supporting_evidence": "reorder() demonstrably pushes an entry past its expiry block.",
+      "strongest_opposing_evidence": "An undocumented keeper retry could settle the entry before expiry.",
+      "counterargument_defeats_finding": "undetermined",
+      "unresolved_assumptions": [
+        "A3",
+        "A4"
+      ],
+      "rationale": "The mechanism is demonstrated and the impact is not. The keeper retry policy is undocumented, so the correct state is unknown rather than refuted."
+    },
+    "red_team_verdict": "needs_information"
+  }
+}

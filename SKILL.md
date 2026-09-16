@@ -40,8 +40,9 @@ All supporting instructions are linked directly from this entrypoint. Read only 
 - `eligibility_gate`: [workers/03-eligibility-gate.md](workers/03-eligibility-gate.md)
 - technology-neutral classifier used by technical validation: [workers/04-target-classifier.md](workers/04-target-classifier.md)
 - `technical_validation`: [workers/04-technical-validation.md](workers/04-technical-validation.md)
-- `verdict_and_improvement`: [workers/05-verdict-and-improvement.md](workers/05-verdict-and-improvement.md)
-- optional, explicitly authorized `report_revision`: [workers/06-report-revision.md](workers/06-report-revision.md)
+- `red_team_validation`: [workers/05-red-team-validation.md](workers/05-red-team-validation.md)
+- `verdict_and_improvement`: [workers/06-verdict-and-improvement.md](workers/06-verdict-and-improvement.md)
+- optional, explicitly authorized `report_revision`: [workers/07-report-revision.md](workers/07-report-revision.md)
 
 ### Technical profiles
 
@@ -60,6 +61,10 @@ When the active adapter is Immunefi, use these references only in the named phas
 - PoC requirements: [platforms/immunefi/poc-guidelines.md](platforms/immunefi/poc-guidelines.md) during policy extraction, technical validation, and an authorized revision
 - report fields and structure: [platforms/immunefi/report-template.md](platforms/immunefi/report-template.md) during verdict/improvement and an authorized revision
 - observed automated-triage checks: [platforms/immunefi/automated-triage-readiness.md](platforms/immunefi/automated-triage-readiness.md) during verdict/improvement and an authorized revision
+
+### Adversarial validation
+
+The Red-Team phase contract, including its vocabularies and evidence rules, is documented in [docs/red-team.md](docs/red-team.md) and enforced by [scripts/red-team.mjs](scripts/red-team.mjs). Apply the same rules in oneshot mode, where no ledger validates the output.
 
 For dynamic sessions, enforce [schemas/session-event.schema.json](schemas/session-event.schema.json) through the session helper or an equivalent implementation when Node is unavailable.
 
@@ -82,6 +87,9 @@ Both modes use the same state machine and evidence requirements. Mode changes pa
 - Determine the affected category and technology from the report, program, and evidence. Support smart contracts, web/apps, Blockchain/DLT, and mixed paths without assuming a language, framework, virtual machine, client architecture, or source-availability model.
 - Distinguish `rejected` from `needs_information`. Missing evidence is not proof that a claim is false.
 - Validate the strongest realistic version of the report, but do not repair an impossible exploit path by introducing unreported assumptions.
+- Challenge every finding that reaches `red_team_validation` before accepting it. Ask how the report could be proven wrong, not only whether it can be supported.
+- Keep `UNSUPPORTED`, `UNKNOWN`, and `IMPOSSIBLE` distinct. Evidence that contradicts a claim makes it unsupported; evidence that is merely missing makes it unknown. Lack of proof is not proof of impossibility.
+- A speculative counterargument never defeats a finding, and a merely plausible argument never establishes one.
 - Severity follows the demonstrated in-scope impact and applicable program rubric.
 - Do not blend impact severity and exploit likelihood into a lower severity unless the applicable rubric explicitly requires that combination. Report likelihood separately.
 - Do not help conceal AI assistance or evade automation detection. Surface the applicable automation policy and require the researcher to review, verify, and take responsibility for the submission.

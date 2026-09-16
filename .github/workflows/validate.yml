@@ -22,8 +22,20 @@ jobs:
       - name: Check session helper syntax
         run: node --check scripts/session.mjs
 
+      - name: Check red-team validator syntax
+        run: node --check scripts/red-team.mjs
+
       - name: Run session tests
         run: node --test tests/session.test.mjs
 
+      - name: Run red-team validator tests
+        run: node --test tests/red-team.test.mjs
+
+      - name: Run adversarial regression tests
+        run: node --test tests/red-team-regression.test.mjs
+
       - name: Validate JSON schema syntax
         run: node -e "JSON.parse(require('node:fs').readFileSync('schemas/session-event.schema.json', 'utf8'))"
+
+      - name: Validate adversarial fixture syntax
+        run: node -e "const fs=require('node:fs');for(const f of fs.readdirSync('tests/fixtures/red-team'))JSON.parse(fs.readFileSync('tests/fixtures/red-team/'+f,'utf8'))"

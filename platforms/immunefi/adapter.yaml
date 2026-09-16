@@ -26,6 +26,12 @@ known_issue_sources:
   - "program_public_disclosure"
   - "program_linked_issue_trackers"
   - "program_linked_audits_and_disclosures"
+adversarial_validation:
+  stage: "red_team_validation"
+  runs_after: "technical_validation"
+  severity_challenge_source: "program_selected_severity_system"
+  policy_interaction: "Technical adjudication precedes eligibility framing; a policy outcome is never presented as a technical refutation."
+
 primacy_modes:
   - "primacy_of_rules"
   - "primacy_of_impact"

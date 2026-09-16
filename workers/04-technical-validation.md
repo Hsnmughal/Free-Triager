@@ -43,4 +43,8 @@ Steelman the strongest realistic interpretation, then run an independent skeptic
 
 Return a claim matrix with `proven`, `supported`, `uncertain`, or `refuted`, plus the most precise available code, request, trace, configuration, or protocol citations. Use `invalid_claim` only when decisive evidence refutes the required path or impact.
 
+## Handoff to Red-Team validation
+
+This phase establishes the finding; the next phase attacks it. Do not pre-empt that challenge by discarding weak links here, and do not settle the adversarial question inside the skeptic pass. Leave the exploit path, preconditions, and privileged-precondition analysis stated precisely enough to be attacked: each precondition separated, each actor named at each transition, and each citation resolvable. `technical_verdict` is the input the Red-Team phase challenges, and it must match the verdict recorded there.
+
 Required `result` keys: `target_classification`, `profile_results`, `claim_matrix`, `exploit_path`, `violated_invariant`, `privileged_precondition_analysis`, `poc_validation`, `poc_execution_status`, `poc_compliance_checklist`, `steelman`, `skeptic`, and `technical_verdict`. Keep the derived technology context inside `target_classification`; do not duplicate it at the result root.

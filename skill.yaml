@@ -8,7 +8,42 @@ workflow:
     - "program_policy"
     - "eligibility_gate"
     - "technical_validation"
+    - "red_team_validation"
     - "verdict_and_improvement"
+adversarial_validation:
+  worker: "workers/05-red-team-validation.md"
+  validator: "scripts/red-team.mjs"
+  documentation: "docs/red-team.md"
+  applies_to: "every_finding_reaching_the_phase"
+  roles:
+    - "prosecutor"
+    - "defender"
+    - "adjudicator"
+  challenge_axes:
+    - "reachability"
+    - "preconditions"
+    - "privileges"
+    - "state"
+    - "impact"
+  assumption_statuses:
+    - "PROVEN"
+    - "INFERRED"
+    - "UNPROVEN"
+    - "IMPOSSIBLE"
+    - "UNKNOWN"
+  attack_path_link_statuses:
+    - "PROVEN"
+    - "INFERRED"
+    - "BLOCKED"
+    - "UNKNOWN"
+  adjudication_levels:
+    - "SUPPORTED"
+    - "PARTIALLY_SUPPORTED"
+    - "UNSUPPORTED"
+    - "UNKNOWN"
+  evidence_policy: "UNSUPPORTED requires contradicting evidence; UNKNOWN requires a recorded unresolved question; IMPOSSIBLE requires decisive evidence."
+  severity_policy: "Challenge the claimed severity; an unsupported severity claim lowers severity confidence and never invalidates a supported technical claim."
+
 technical_routing:
   classifier: "workers/04-target-classifier.md"
   profiles:

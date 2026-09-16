@@ -2,7 +2,7 @@
 
 Free pre-submission triage for vulnerability reports.
 
-[![Version](https://img.shields.io/badge/version-0.1.0-2ea44f?style=flat-square)](VERSION) [![MIT License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE) [![Validate](https://github.com/Hsnmughal/Free-Triager/actions/workflows/validate.yml/badge.svg)](https://github.com/Hsnmughal/Free-Triager/actions/workflows/validate.yml)
+[![Version](https://img.shields.io/badge/version-0.2.0-2ea44f?style=flat-square)](VERSION) [![MIT License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE) [![Validate](https://github.com/Hsnmughal/Free-Triager/actions/workflows/validate.yml/badge.svg)](https://github.com/Hsnmughal/Free-Triager/actions/workflows/validate.yml)
 
 [![Claude Code](https://img.shields.io/badge/Claude_Code-F5E6D0?style=for-the-badge&logo=anthropic&logoColor=1a1a1a)](https://claude.ai/download) [![Cursor](https://img.shields.io/badge/Cursor-000000?style=for-the-badge&logo=cursor&logoColor=white)](https://cursor.com/) [![Codex](https://img.shields.io/badge/Codex-000000?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/index/introducing-codex/) [![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-000000?style=for-the-badge&logo=githubcopilot&logoColor=white)](https://github.com/features/copilot) [![Windsurf](https://img.shields.io/badge/Windsurf-0062FF?style=for-the-badge&logo=windsurf&logoColor=white)](https://www.windsurf.com/)
 
@@ -23,16 +23,33 @@ Free Triager performs that review before submission. It is designed to help rese
 
 ## What It Checks
 
-Free Triager evaluates four separate questions:
+Free Triager evaluates five separate questions:
 
 <table>
 <tr><td><strong>Technical validity:</strong></td><td>Does the reported behavior exist, and is the claimed attack path realistic and reproducible?</td></tr>
+<tr><td><strong>Adversarial validity:</strong></td><td>If the report were wrong, how could it be proven wrong? See <a href="docs/red-team.md">the Red-Team layer</a>.</td></tr>
 <tr><td><strong>Program eligibility:</strong></td><td>Are the affected asset, impact, assumptions, and attack conditions covered by the program's current rules?</td></tr>
 <tr><td><strong>Submission readiness:</strong></td><td>Does the report and its proof of concept satisfy the platform's submission requirements?</td></tr>
 <tr><td><strong>Rejection risk:</strong></td><td>Which specific issues could cause automated or human triage to reject or downgrade the report, and how should they be corrected?</td></tr>
 </table>
 
 It keeps automated-triage readiness separate from the underlying technical merits. A valid but poorly presented report is not treated as an invalid vulnerability.
+
+## Adversarial Validation
+
+Every finding that survives technical validation is then attacked. A Prosecutor argues the finding, a Defender tries to break it, and an Adjudicator weighs the evidence rather than counting arguments.
+
+The layer keeps three states apart that are easy to collapse into one another:
+
+| State | Meaning | Recorded as |
+|---|---|---|
+| The evidence contradicts the claim | the claim is refuted | `UNSUPPORTED`, with the counterexample that refutes it |
+| The claim is not established | the report has not shown it | `PARTIALLY_SUPPORTED`, with the unproven assumption named |
+| The evidence is insufficient to decide | nobody knows yet | `UNKNOWN`, with the question that would resolve it |
+
+Lack of proof is not proof of impossibility. A speculative counterargument never defeats a finding, and a merely plausible argument never establishes one. Severity is challenged separately from the technical claim, so an exaggerated severity claim lowers the severity confidence instead of invalidating a real finding.
+
+[`docs/red-team.md`](docs/red-team.md) documents the phase, with worked Prosecutor and Defender examples.
 
 ## Supported Platforms
 

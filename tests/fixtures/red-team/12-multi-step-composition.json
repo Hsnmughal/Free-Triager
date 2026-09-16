@@ -1,0 +1,434 @@
+{
+  "schema_version": "1.0",
+  "case_id": "12-multi-step-composition",
+  "title": "Multi-step finding where no individual function is vulnerable in isolation",
+  "scenario": "Three functions are each correct on their own. Composed in one transaction, a stale cached rate, a permissionless cache refresh and a rebate claim let an attacker claim a rebate computed at a rate that no longer applies.",
+  "exercises": [
+    "a composition finding is judged on the composed path, not function by function",
+    "a long attack path is not a reason to reject"
+  ],
+  "expectation": {
+    "status": "withstood",
+    "red_team_verdict": "technically_valid",
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED"
+    },
+    "counterargument_defeats_finding": "no",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "plausible"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "SUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "individual correctness does not refute the composed path",
+      "path": "adjudication.technical_claim",
+      "value": "UNSUPPORTED",
+      "expect_error": "technical_claim is UNSUPPORTED but no decisive or strong counterexample with evidence targets it"
+    },
+    {
+      "name": "a long path is only supported while every link holds",
+      "path": "attack_path.4.status",
+      "value": "UNKNOWN",
+      "expect_error": "adjudication.attack_path is SUPPORTED but step 5 is UNKNOWN"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Rebate inflation by composing a cache refresh with a rebate claim",
+      "claimed_severity": "High"
+    },
+    "status": "withstood",
+    "prosecutor": {
+      "strongest_claim": "Refreshing the rate cache between accrual and claim lets the attacker claim at an outdated favorable rate within one transaction.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Rebate.sol:132 claim() reads cachedRate"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can call refreshCache() and claim().",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RateCache.sol:58 and contracts/Rebate.sol:120"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "RateCache.refreshCache() composed with Rebate.claim()",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RateCache.sol:58"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "An accrued rebate exists and the cached rate differs from the live rate.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "cachedRate 1.04 vs live 0.97 at block 21288401"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "accrue() stamps the entitlement, refreshCache() rewrites the rate, and claim() recomputes the payout from the new cache.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testComposedRebateInflation: payout 7.2 percent above entitlement"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "A rebate pays at the rate in force when it accrued.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Rebate.sol:132 recomputes rather than reading the stamped rate"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The attacker extracts the difference from the rebate pool on every claim.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testComposedRebateInflation: 7.2 percent extracted"
+            }
+          ]
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "Each function is individually correct and independently audited, so there may be no defect to report.",
+      "evidence": [
+        {
+          "kind": "external",
+          "ref": "audit report 2026-01, findings 4.1 to 4.9 cover each function separately"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "reachability",
+          "statement": "Each function is correct in isolation and was audited as such.",
+          "strength": "strong",
+          "targets": [
+            "technical_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "external",
+              "ref": "audit report 2026-01 section 4"
+            }
+          ]
+        },
+        {
+          "axis": "state",
+          "statement": "The rate divergence may be too small or too short-lived to exploit profitably.",
+          "strength": "strong",
+          "targets": [
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "observed divergence window 14 blocks at block 21288401"
+            }
+          ]
+        },
+        {
+          "axis": "privileges",
+          "statement": "refreshCache() may be keeper-restricted in production.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "preconditions",
+          "statement": "Atomic composition may be prevented by a per-transaction guard.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "impact",
+          "statement": "The rebate pool may absorb the difference without user loss.",
+          "strength": "plausible",
+          "targets": [
+            "impact"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "Both entry points are permissionless and composable in a single transaction.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RateCache.sol:58, contracts/Rebate.sol:120"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The rate divergence occurs on every oracle update and lasts until the next refresh.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "cachedRate 1.04 vs live 0.97 at block 21288401"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No reentrancy guard or keeper restriction applies to either call.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RateCache.sol:58 no modifier"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The composed state is reached with ordinary calls in one transaction.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testComposedRebateInflation"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The executed test shows a 7.2 percent overpayment drawn from the rebate pool.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testComposedRebateInflation"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "refreshCache() and claim() can be called in one transaction by the same address.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RateCache.sol:58, contracts/Rebate.sol:120"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "claim() recomputes from the cache rather than the stamped rate.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Rebate.sol:132"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "A favorable divergence is available often enough to matter.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "14-block divergence window observed at block 21288401"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker accrues a rebate entitlement at the current rate.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Rebate.sol:104 accrue()"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "permissionless",
+        "transition": "Attacker waits for the live rate to move away from the cached rate.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "cachedRate 1.04 vs live 0.97 at block 21288401"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "permissionless",
+        "transition": "In one transaction, attacker calls refreshCache().",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RateCache.sol:58"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "protocol_controlled",
+        "transition": "cachedRate is rewritten to the favorable value.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testComposedRebateInflation"
+          }
+        ]
+      },
+      {
+        "step": 5,
+        "actor_class": "permissionless",
+        "transition": "Attacker calls claim() in the same transaction.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Rebate.sol:120"
+          }
+        ]
+      },
+      {
+        "step": 6,
+        "actor_class": "protocol_controlled",
+        "transition": "Payout is recomputed from the new cache and overpays by 7.2 percent.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testComposedRebateInflation"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "technical_claim"
+        ],
+        "reason": "Each function is individually correct, so a per-function review finds nothing; the defect exists only in the composition.",
+        "strength": "plausible",
+        "evidence": [
+          {
+            "kind": "external",
+            "ref": "audit report 2026-01 section 4"
+          }
+        ],
+        "function": "RateCache.refreshCache / Rebate.claim",
+        "call_sequence": "refreshCache -> claim in one transaction"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "claim() recomputes the payout from the mutable cache rather than the rate stamped at accrual.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Rebate.sol:132"
+          }
+        ]
+      },
+      {
+        "fact": "Both entry points are permissionless and composable atomically.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RateCache.sol:58"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "7.2 percent overpayment per claim drawn from the rebate pool",
+      "impact_class": "economic_consequence",
+      "severity_support": "SUPPORTED",
+      "reproducible": "yes",
+      "bounded": "no",
+      "reversible": "no",
+      "persistent": "yes",
+      "attacker_requirements": "None beyond gas and the ability to observe a rate divergence.",
+      "policy_alignment": "Matches the program's theft of protocol funds tier for smart contracts.",
+      "unproven_dependencies": []
+    },
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED",
+      "strongest_supporting_evidence": "claim() recomputes from a cache the attacker can rewrite in the same transaction.",
+      "strongest_opposing_evidence": "Each function is individually correct and was audited as such.",
+      "counterargument_defeats_finding": "no",
+      "unresolved_assumptions": [],
+      "rationale": "Function-by-function correctness does not answer the composed question. The composed path is permissionless, atomic, and executed; the finding stands."
+    },
+    "red_team_verdict": "technically_valid"
+  }
+}

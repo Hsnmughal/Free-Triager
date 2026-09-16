@@ -1,0 +1,386 @@
+{
+  "schema_version": "1.0",
+  "case_id": "02-invalid-finding-with-convincing-evidence",
+  "title": "Invalid finding with convincing-looking initial evidence",
+  "scenario": "The report cites a genuine unchecked return value and a real transfer helper, and reads as a clean loss-of-funds finding. The token in question reverts on failure, so the unchecked branch is unreachable in the deployed configuration and no loss can occur.",
+  "exercises": [
+    "convincing surface evidence does not survive a decisive counterexample",
+    "refutation is anchored to a named configuration fact"
+  ],
+  "expectation": {
+    "status": "refuted",
+    "red_team_verdict": "invalid_claim",
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "yes",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "IMPOSSIBLE",
+      "A3": "IMPOSSIBLE"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "BLOCKED",
+      "UNKNOWN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "decisive",
+      "CE2": "strong"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a refuted finding cannot be recorded as having withstood the challenge",
+      "path": "status",
+      "value": "withstood",
+      "expect_error": "status withstood conflicts with adjudication.technical_claim = UNSUPPORTED"
+    },
+    {
+      "name": "an impossible decisive assumption must force an unsupported technical claim",
+      "path": "adjudication.technical_claim",
+      "value": "PARTIALLY_SUPPORTED",
+      "expect_error": "decisive assumption A2 is IMPOSSIBLE, so adjudication.technical_claim must be UNSUPPORTED"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "uncertain",
+      "claimed_impact": "Loss of user funds through an unchecked transfer return value",
+      "claimed_severity": "Critical"
+    },
+    "status": "refuted",
+    "prosecutor": {
+      "strongest_claim": "withdraw() ignores the transfer return value, so a silent failure credits the user without moving tokens.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Treasury.sol:118 transfer() return value discarded"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any depositor can call withdraw().",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Treasury.sol:104"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Treasury.withdraw(uint256)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Treasury.sol:104"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "The configured token returns false instead of reverting on a failed transfer.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "execution_path": {
+          "statement": "withdraw() decrements the balance and calls transfer() without checking the result.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Treasury.sol:112-118"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Accounting only changes when the token movement succeeds.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "impact": {
+          "statement": "The user balance is zeroed while the tokens remain in the treasury.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "The single configured token reverts on a failed transfer, so the unchecked false branch cannot be taken.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "vendor/StableToken.sol:88 reverts on insufficient balance"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "state",
+          "statement": "The deployed token never returns false; it reverts, so the silent-failure state cannot exist.",
+          "strength": "decisive",
+          "targets": [
+            "technical_claim",
+            "attack_path",
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "vendor/StableToken.sol:88"
+            }
+          ]
+        },
+        {
+          "axis": "reachability",
+          "statement": "No other token can be registered because the address is immutable.",
+          "strength": "strong",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Treasury.sol:31 immutable token"
+            }
+          ]
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "The unchecked branch is only reachable for a token that returns false.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:112-118"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The required precondition is a non-reverting token, which the deployment excludes.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/Treasury.json: token == StableToken"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No privileged actor is involved; the barrier is not a privilege barrier.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:104"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The token reverts on failure, so the silent-failure state cannot occur.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "vendor/StableToken.sol:88"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "No accounting divergence can arise because the failing call reverts the whole transaction.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testWithdrawRevertsOnFailure"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "Any depositor can call withdraw().",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:104"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "The configured token can return false instead of reverting.",
+        "status": "IMPOSSIBLE",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "vendor/StableToken.sol:88 reverts on insufficient balance"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "A different token can be registered after deployment.",
+        "status": "IMPOSSIBLE",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:31 immutable token address"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "ordinary_user",
+        "transition": "Depositor calls withdraw() for more than the treasury holds.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:104"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "external_dependency",
+        "transition": "Token transfer fails and returns false rather than reverting.",
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "vendor/StableToken.sol:88"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "Balance is decremented although no tokens moved.",
+        "status": "UNKNOWN",
+        "evidence": []
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "technical_claim",
+          "attack_path",
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "The deployed token reverts on a failed transfer, so the unchecked false branch is never taken and no accounting divergence occurs.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "vendor/StableToken.sol:88"
+          },
+          {
+            "kind": "execution",
+            "ref": "forge test -m testWithdrawRevertsOnFailure"
+          }
+        ],
+        "function": "StableToken.transfer()",
+        "condition": "balanceOf(from) < amount reverts",
+        "call_sequence": "Treasury.withdraw -> StableToken.transfer -> revert",
+        "refutes_assumptions": [
+          "A2"
+        ],
+        "blocks_steps": [
+          2
+        ]
+      },
+      {
+        "id": "CE2",
+        "targets": [
+          "attack_path"
+        ],
+        "reason": "The token address is immutable, so no permissive token can be substituted later.",
+        "strength": "strong",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:31"
+          }
+        ],
+        "function": "Treasury constructor",
+        "refutes_assumptions": [
+          "A3"
+        ]
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "The deployed token reverts rather than returning false on a failed transfer.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "vendor/StableToken.sol:88"
+          }
+        ]
+      },
+      {
+        "fact": "The token address is immutable, so the permissive-token assumption cannot be satisfied later.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Treasury.sol:31"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "Critical",
+      "demonstrated_impact": "None; the transaction reverts before any accounting change",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "no",
+      "bounded": "yes",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "None; the required token behavior does not exist in this deployment.",
+      "policy_alignment": "No in-scope impact is demonstrated, so no severity tier applies.",
+      "unproven_dependencies": [
+        "A token that returns false on failure"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "The unchecked return value at contracts/Treasury.sol:118 is real.",
+      "strongest_opposing_evidence": "The deployed token reverts on failure, so the unchecked branch is unreachable.",
+      "counterargument_defeats_finding": "yes",
+      "unresolved_assumptions": [],
+      "rationale": "The cited code pattern is real but the state it requires cannot exist in this deployment; the finding is refuted by the token implementation, not by absence of proof."
+    },
+    "red_team_verdict": "invalid_claim"
+  }
+}

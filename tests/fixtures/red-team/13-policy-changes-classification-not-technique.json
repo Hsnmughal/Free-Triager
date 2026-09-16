@@ -1,0 +1,404 @@
+{
+  "schema_version": "1.0",
+  "case_id": "13-policy-changes-classification-not-technique",
+  "title": "Program policy changes the classification but not the technical conclusion",
+  "scenario": "The reentrancy is real, demonstrated, and would be High severity. The affected deployment is the mock instance the program explicitly excludes from scope, so the classification changes while the technical conclusion does not.",
+  "exercises": [
+    "a policy outcome is never presented as a technical refutation",
+    "the technical adjudication is completed before the eligibility framing is applied"
+  ],
+  "expectation": {
+    "status": "withstood",
+    "red_team_verdict": "out_of_scope",
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED"
+    },
+    "counterargument_defeats_finding": "no",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "plausible"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "SUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a scope exclusion must not be recorded as a technical refutation",
+      "path": "red_team_verdict",
+      "value": "invalid_claim",
+      "expect_error": "red_team_verdict invalid_claim requires status refuted"
+    },
+    {
+      "name": "a scope exclusion does not make the technical claim unsupported",
+      "path": "adjudication.technical_claim",
+      "value": "UNSUPPORTED",
+      "expect_error": "technical_claim is UNSUPPORTED but no decisive or strong counterexample with evidence targets it"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Reentrancy in the mock staking deployment drains the pool",
+      "claimed_severity": "High"
+    },
+    "status": "withstood",
+    "prosecutor": {
+      "strongest_claim": "The staking contract updates its balance after the external call, so a reentrant callback withdraws repeatedly.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Staking.sol:212 external call precedes the state update"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can stake and withdraw.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Staking.sol:190"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Staking.withdraw(uint256)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Staking.sol:190"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "The attacker holds a stake and controls the receiving address.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "attacker stake 10 ETH on the mock deployment"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "withdraw() calls the receiver before zeroing the balance, so the callback re-enters with the stale balance.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Staking.sol:206-220"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "A stake can be withdrawn once.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Staking.sol:218"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The pool is drained to the attacker in a single transaction.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testReentrantWithdraw: pool balance 0"
+            }
+          ]
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "A reentrancy guard may be inherited from the base contract, and the deployment may not be the one the report names.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/base/Guarded.sol:12 nonReentrant is defined but not applied to withdraw()"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "reachability",
+          "statement": "A nonReentrant modifier may apply through inheritance.",
+          "strength": "strong",
+          "targets": [
+            "technical_claim",
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Staking.sol:190 has no modifier"
+            }
+          ]
+        },
+        {
+          "axis": "state",
+          "statement": "The drained pool may hold only test funds.",
+          "strength": "plausible",
+          "targets": [
+            "severity_claim"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "privileges",
+          "statement": "No privilege question arises.",
+          "strength": "plausible",
+          "targets": [
+            "technical_claim"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "preconditions",
+          "statement": "The attacker must control a contract address, which is trivial.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "impact",
+          "statement": "The mock pool balance may be irrelevant to real users.",
+          "strength": "plausible",
+          "targets": [
+            "impact"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "withdraw() carries no reentrancy guard although one exists in the base contract.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:190"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "Only a staked balance and an attacker-controlled receiver are needed.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:206-220"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No privileged actor participates.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:190"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The state is reached by ordinary staking.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReentrantWithdraw"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The executed test drains the pool; the pool belongs to the excluded mock deployment.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReentrantWithdraw"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "withdraw() performs the external call before the state update.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:206-220"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "No reentrancy guard applies to withdraw().",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:190"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "The affected address is the mock deployment named in the program exclusions.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "policy",
+            "ref": "program scope page: Mock/testnet deployments are out of scope, retrieved 2026-09-14"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker stakes from a contract it controls.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReentrantWithdraw"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "permissionless",
+        "transition": "Attacker calls withdraw().",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:190"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "The external call reaches the attacker callback before the balance is zeroed.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:206-220"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "permissionless",
+        "transition": "Callback re-enters withdraw() with the stale balance until the pool is empty.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testReentrantWithdraw: pool balance 0"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "technical_claim"
+        ],
+        "reason": "An inherited nonReentrant modifier would have blocked the re-entry, but withdraw() does not apply it.",
+        "strength": "plausible",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/base/Guarded.sol:12"
+          }
+        ],
+        "function": "Staking.withdraw()",
+        "condition": "modifier list is empty"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "withdraw() calls out before updating the balance and applies no guard.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Staking.sol:206-220"
+          }
+        ]
+      },
+      {
+        "fact": "The affected address is listed under the program's mock-deployment exclusion.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "policy",
+            "ref": "program scope page: Mock/testnet deployments are out of scope, retrieved 2026-09-14"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "Full drain of the affected staking pool",
+      "impact_class": "protocol_consequence",
+      "severity_support": "SUPPORTED",
+      "reproducible": "yes",
+      "bounded": "no",
+      "reversible": "no",
+      "persistent": "yes",
+      "attacker_requirements": "None beyond gas and an attacker-controlled contract.",
+      "policy_alignment": "The impact maps to the program's theft of protocol funds tier, but the affected asset falls under the mock-deployment exclusion, which changes eligibility rather than the technical conclusion.",
+      "unproven_dependencies": []
+    },
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED",
+      "strongest_supporting_evidence": "The external call precedes the state update and no guard applies, confirmed by an executed test.",
+      "strongest_opposing_evidence": "The affected deployment is the excluded mock instance.",
+      "counterargument_defeats_finding": "no",
+      "unresolved_assumptions": [],
+      "rationale": "The technical claim survives in full. The exclusion applies to the asset, not to the analysis, so the finding is out of scope while remaining technically correct."
+    },
+    "red_team_verdict": "out_of_scope"
+  }
+}

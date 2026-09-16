@@ -4,12 +4,14 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { RED_TEAM_RESULT_KEYS, validateRedTeamResult, validateRedTeamAgainstTechnical } from "./red-team.mjs";
 
 const PHASES = [
   "prior_art",
   "program_policy",
   "eligibility_gate",
   "technical_validation",
+  "red_team_validation",
   "verdict_and_improvement",
 ];
 const STATUSES = new Set(["complete", "terminal", "needs_information", "error"]);
@@ -20,7 +22,8 @@ const REQUIRED_RESULTS = {
   program_policy: ["assets", "impacts", "exclusions", "primacy", "severity_system", "poc_requirements", "automation_policy", "submission_rules", "category_rule_matrix"],
   eligibility_gate: ["gates", "known_issue_classification", "applicable_scope_path", "viable_category_paths", "disposition"],
   technical_validation: ["target_classification", "profile_results", "claim_matrix", "exploit_path", "violated_invariant", "privileged_precondition_analysis", "poc_validation", "poc_execution_status", "poc_compliance_checklist", "steelman", "skeptic", "technical_verdict"],
-  verdict_and_improvement: ["target_category", "profile_summary", "verdict", "severity", "severity_basis", "likelihood", "automated_triage_readiness", "human_merits", "submission_recommendation", "fee_risk", "rejection_risks", "improvements", "report_outline", "template_compliance_checklist", "confidence"],
+  red_team_validation: RED_TEAM_RESULT_KEYS,
+  verdict_and_improvement: ["target_category", "profile_summary", "verdict", "severity", "severity_basis", "severity_confidence", "likelihood", "red_team_summary", "automated_triage_readiness", "human_merits", "submission_recommendation", "fee_risk", "rejection_risks", "improvements", "report_outline", "template_compliance_checklist", "confidence"],
   report_revision: ["original_path", "revised_path", "change_log", "remaining_risks"],
 };
 
@@ -115,6 +118,9 @@ function validatePayload(payload, phase, status) {
     for (const field of REQUIRED_RESULTS[phase] ?? []) {
       if (!(field in payload.result)) errors.push(`missing phase result field: ${field}`);
     }
+    if (phase === "red_team_validation") {
+      for (const error of validateRedTeamResult(payload.result)) errors.push(error);
+    }
     if (phase === "technical_validation") {
       const classification = payload.result.target_classification;
       const categories = new Set(["smart_contract", "web_app", "blockchain_dlt"]);
@@ -204,6 +210,13 @@ function validateFreshProgramRead(payload, initEvent, latestEvent, phase) {
     : ["saved program URL must have a valid retrieved_at timestamp at or after the previous checkpoint"];
 }
 
+function validateChallengedTechnicalFinding(payload, priorEvents, phase) {
+  if (phase !== "red_team_validation") return [];
+  const technical = priorEvents.find((event) => event.phase === "technical_validation" && event.status === "complete");
+  if (!technical) return ["red_team_validation requires a completed technical_validation checkpoint"];
+  return validateRedTeamAgainstTechnical(payload?.result, technical.payload?.result);
+}
+
 function nextPhase(events) {
   const completed = new Set(events.filter((e) => e.status === "complete").map((e) => e.phase));
   return PHASES.find((phase) => !completed.has(phase)) ?? "complete";
@@ -232,6 +245,9 @@ function validationErrors(events) {
         errors.push(`line ${i + 1}: ${error}`);
       }
       for (const error of validateFreshProgramRead(event.payload, first, events[i - 1], event.phase)) {
+        errors.push(`line ${i + 1}: ${error}`);
+      }
+      for (const error of validateChallengedTechnicalFinding(event.payload, events.slice(0, i), event.phase)) {
         errors.push(`line ${i + 1}: ${error}`);
       }
     }
@@ -354,6 +370,7 @@ function append(values) {
   const payloadErrors = [
     ...validatePayload(payload, values.phase, values.status),
     ...validateFreshProgramRead(payload, initEvent, latest, values.phase),
+    ...validateChallengedTechnicalFinding(payload, events, values.phase),
   ];
   if (payloadErrors.length) fail(payloadErrors.join("; "));
 

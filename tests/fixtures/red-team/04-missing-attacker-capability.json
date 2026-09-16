@@ -1,0 +1,375 @@
+{
+  "schema_version": "1.0",
+  "case_id": "04-missing-attacker-capability",
+  "title": "Finding that assumes an attacker capability the attacker cannot obtain",
+  "scenario": "The report assumes the attacker holds OPERATOR_ROLE. The role is granted only by a timelocked governance vote and there is no self-grant path, so the capability is not merely unproven; it is unobtainable.",
+  "exercises": [
+    "attacker capability is never assumed from the existence of a callable function",
+    "an unobtainable capability refutes rather than weakens"
+  ],
+  "expectation": {
+    "status": "refuted",
+    "red_team_verdict": "invalid_claim",
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "yes",
+    "assumption_statuses": {
+      "A1": "IMPOSSIBLE",
+      "A2": "PROVEN",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "BLOCKED",
+      "UNKNOWN",
+      "INFERRED"
+    ],
+    "counterexample_strengths": {
+      "CE1": "decisive"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "capability may not be assumed back into existence",
+      "path": "adjudication.attack_path",
+      "value": "SUPPORTED",
+      "expect_error": "adjudication.attack_path is SUPPORTED but step 1 is BLOCKED"
+    },
+    {
+      "name": "an unobtainable decisive capability forces an unsupported technical claim",
+      "path": "adjudication.technical_claim",
+      "value": "UNKNOWN",
+      "expect_error": "decisive assumption A1 is IMPOSSIBLE, so adjudication.technical_claim must be UNSUPPORTED"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "uncertain",
+      "claimed_impact": "Operator can redirect protocol fees to an arbitrary address",
+      "claimed_severity": "Critical"
+    },
+    "status": "refuted",
+    "prosecutor": {
+      "strongest_claim": "An operator can point the fee sink at an address it controls and capture all protocol fees.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/FeeRouter.sol:140 setFeeSink()"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "The attacker holds OPERATOR_ROLE.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "entry_point": {
+          "statement": "FeeRouter.setFeeSink(address)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/FeeRouter.sol:140"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "The router holds accrued fees at the time of the change.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "FeeRouter balance 92 ETH at block 21110004"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "setFeeSink() writes the sink without validation and the next distribute() pays it.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/FeeRouter.sol:140-152"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Protocol fees reach the treasury.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/FeeRouter.sol:168"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "All accrued and future fees are captured.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "OPERATOR_ROLE is granted only through a 48-hour timelocked governance proposal; no attacker-reachable path grants it.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/AccessRegistry.sol:77 onlyTimelock grantRole"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "privileges",
+          "statement": "The role is grantable only by the timelock, whose proposer set is the governance multisig; a permissionless actor cannot obtain it.",
+          "strength": "decisive",
+          "targets": [
+            "technical_claim",
+            "attack_path",
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/AccessRegistry.sol:77"
+            },
+            {
+              "kind": "config",
+              "ref": "deployments/mainnet/Timelock.json: proposers == [governance multisig]"
+            }
+          ]
+        },
+        {
+          "axis": "reachability",
+          "statement": "No delegatecall or initializer re-entry path reassigns roles after deployment.",
+          "strength": "strong",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/AccessRegistry.sol:40-92"
+            }
+          ]
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "setFeeSink() is reachable, but only for an address already holding the role.",
+        "support": "PARTIALLY_SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/FeeRouter.sol:140"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The sole precondition is possession of OPERATOR_ROLE, which the report never establishes.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "report",
+            "ref": "report.md section 3 asserts operator access without evidence"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "The attacker is permissionless and cannot obtain OPERATOR_ROLE by any code path.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/AccessRegistry.sol:77"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The fee state is real and attacker-independent.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "FeeRouter balance 92 ETH at block 21110004"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The impact would follow if the capability existed, which it does not.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/FeeRouter.sol:140-152"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "The attacker can obtain OPERATOR_ROLE.",
+        "status": "IMPOSSIBLE",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/AccessRegistry.sol:77 onlyTimelock"
+          },
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/Timelock.json proposers"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "setFeeSink() validates nothing about the new sink.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/FeeRouter.sol:140-152"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "Accrued fees exist when the sink changes.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "FeeRouter balance 92 ETH at block 21110004"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker acquires OPERATOR_ROLE.",
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/AccessRegistry.sol:77"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "trusted_role",
+        "transition": "Operator calls setFeeSink() with an attacker address.",
+        "status": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "distribute() pays accrued fees to the new sink.",
+        "status": "INFERRED",
+        "evidence": []
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "technical_claim",
+          "attack_path",
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "OPERATOR_ROLE is grantable only by the timelock, whose proposer set is the governance multisig, so a permissionless attacker cannot reach step 1.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/AccessRegistry.sol:77"
+          },
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/Timelock.json: proposers == [governance multisig]"
+          }
+        ],
+        "function": "AccessRegistry.grantRole()",
+        "condition": "msg.sender == timelock",
+        "call_sequence": "governance proposal -> 48h timelock -> grantRole",
+        "refutes_assumptions": [
+          "A1"
+        ],
+        "blocks_steps": [
+          1
+        ]
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "OPERATOR_ROLE can be granted only by the timelock contract.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/AccessRegistry.sol:77"
+          }
+        ]
+      },
+      {
+        "fact": "setFeeSink() genuinely lacks sink validation.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/FeeRouter.sol:140-152"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "Critical",
+      "demonstrated_impact": "None; the attacker cannot obtain the required role",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "no",
+      "bounded": "yes",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "Possession of a governance-granted role, which the attacker cannot obtain.",
+      "policy_alignment": "The program treats privileged-actor misuse separately; this path needs a capability no attacker can acquire.",
+      "unproven_dependencies": [
+        "Attacker possession of OPERATOR_ROLE"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "setFeeSink() performs no validation on the new sink address.",
+      "strongest_opposing_evidence": "OPERATOR_ROLE is grantable only by the timelock, so the attacker cannot reach the entry point.",
+      "counterargument_defeats_finding": "yes",
+      "unresolved_assumptions": [],
+      "rationale": "The missing capability is not merely unproven; the role-grant path is closed to every non-governance actor, which blocks step 1."
+    },
+    "red_team_verdict": "invalid_claim"
+  }
+}

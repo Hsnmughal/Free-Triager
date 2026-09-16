@@ -1,0 +1,385 @@
+{
+  "schema_version": "1.0",
+  "case_id": "01-valid-finding-survives-strong-counterargument",
+  "title": "Valid finding with a strong counterargument that ultimately fails",
+  "scenario": "An unclaimed reward accrual is stranded by a permissionless epoch rollover. The Defender finds a real recovery function and argues the loss is only an accounting artifact; reading that function shows it forwards the balance to the treasury, so the counterargument fails on its own evidence.",
+  "exercises": [
+    "defender argument is strong and evidenced but does not defeat the finding",
+    "a surviving counterexample is recorded rather than discarded"
+  ],
+  "expectation": {
+    "status": "withstood",
+    "red_team_verdict": "technically_valid",
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED"
+    },
+    "counterargument_defeats_finding": "no",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "PROVEN",
+      "A4": "INFERRED"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "plausible"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "SUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a strong but failed counterargument must not be recorded as a refutation",
+      "path": "adjudication.technical_claim",
+      "value": "UNSUPPORTED",
+      "expect_error": "technical_claim is UNSUPPORTED but no decisive or strong counterexample with evidence targets it"
+    },
+    {
+      "name": "a surviving finding cannot be reported as defeated",
+      "path": "adjudication.counterargument_defeats_finding",
+      "value": "yes",
+      "expect_error": "counterargument_defeats_finding = yes requires at least one UNSUPPORTED adjudication axis"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Permanent freezing of an unprivileged depositor's accrued rewards",
+      "claimed_severity": "High"
+    },
+    "status": "withstood",
+    "prosecutor": {
+      "strongest_claim": "A permissionless caller advances the epoch before settlement, making an ordinary depositor's accrued rewards permanently unclaimable.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/RewardVault.sol:214-238"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can call rollEpoch() after the epoch deadline.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RewardVault.sol:196 has no access modifier"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "RewardVault.rollEpoch(uint256)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RewardVault.sol:196"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "A depositor holds an unclaimed accrual in the closing epoch.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "fork state dump block 21004311: pendingRewards[user] = 4.1e18"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "rollEpoch() increments currentEpoch before settling pendingRewards.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RewardVault.sol:214-238"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Accrued rewards stay claimable by their owner across an epoch boundary.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RewardVault.sol:240 claim() reverts on epoch mismatch"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The accrual is unrecoverable by any code path.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testRolloverStrandsRewards: claim() reverts EpochClosed"
+            }
+          ]
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "sweepStale() exists and may return stranded balances in a later epoch, making the loss temporary.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/RewardVault.sol:262-271"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "reachability",
+          "statement": "rollEpoch() may be gated by a keeper allowlist in the deployed configuration.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "impact",
+          "statement": "sweepStale() may restore the stranded balance to its owner.",
+          "strength": "strong",
+          "targets": [
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/RewardVault.sol:262-271"
+            }
+          ]
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "rollEpoch() carries no modifier and the deployed keeper address is zero.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/RewardVault.json: keeper == address(0)"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The only precondition is an unclaimed accrual, which is the ordinary depositor state.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:180-194"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "The attacker is permissionless; no privileged actor is required.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:196"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The required state arises from ordinary deposits and is attacker-independent.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "fork state dump block 21004311"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "sweepStale() forwards stranded balances to the treasury, not to the owner, so the loss is final.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:262-271"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "Any address can call rollEpoch() after the deadline.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:196"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "An unclaimed accrual exists at the epoch boundary.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "fork state dump block 21004311"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "No code path returns a stranded balance to its owner.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:262-271 transfers to treasury"
+          }
+        ]
+      },
+      {
+        "id": "A4",
+        "statement": "The attacker gains value beyond denying the depositor.",
+        "status": "INFERRED",
+        "decisive": false,
+        "evidence": []
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker observes an unclaimed accrual near the epoch deadline.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "state",
+            "ref": "pendingRewards[user] = 4.1e18 at block 21004311"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "permissionless",
+        "transition": "Attacker calls rollEpoch() in the deadline block.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:196"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "currentEpoch advances before pendingRewards is settled.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:214-238"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "ordinary_user",
+        "transition": "Depositor calls claim() and the call reverts with EpochClosed.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testRolloverStrandsRewards"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "impact"
+        ],
+        "reason": "sweepStale() could have neutralized the loss, but it transfers the balance to the treasury rather than the owner.",
+        "strength": "plausible",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:262-271"
+          }
+        ],
+        "function": "RewardVault.sweepStale()",
+        "condition": "epoch < currentEpoch - 1"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "rollEpoch() advances the epoch counter before settling accrued rewards.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:214-238"
+          }
+        ]
+      },
+      {
+        "fact": "No code path returns a stranded balance to its owner.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/RewardVault.sol:262-271"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "Permanent loss of an unprivileged depositor's accrued rewards",
+      "impact_class": "user_consequence",
+      "severity_support": "SUPPORTED",
+      "reproducible": "yes",
+      "bounded": "yes",
+      "reversible": "no",
+      "persistent": "yes",
+      "attacker_requirements": "None beyond gas; the entry point is permissionless.",
+      "policy_alignment": "Matches the program's permanent freezing of funds impact for smart contracts.",
+      "unproven_dependencies": []
+    },
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED",
+      "strongest_supporting_evidence": "The epoch counter advances before settlement at contracts/RewardVault.sol:214-238.",
+      "strongest_opposing_evidence": "sweepStale() exists and could have been a recovery path.",
+      "counterargument_defeats_finding": "no",
+      "unresolved_assumptions": [],
+      "rationale": "The strongest counterargument was a possible recovery path; reading it showed the balance goes to the treasury, so the finding stands."
+    },
+    "red_team_verdict": "technically_valid"
+  }
+}

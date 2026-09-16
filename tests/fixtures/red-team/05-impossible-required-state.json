@@ -1,0 +1,379 @@
+{
+  "schema_version": "1.0",
+  "case_id": "05-impossible-required-state",
+  "title": "Finding that requires a state the protocol invariant forbids",
+  "scenario": "The PoC constructs a pool where totalShares exceeds totalAssets. Deposit and withdraw both maintain the opposite inequality and no other function writes either field, so the PoC state is reachable only by direct storage manipulation in the test harness.",
+  "exercises": [
+    "a PoC that relies on an unreachable state does not establish a finding",
+    "test-harness state is separated from protocol-reachable state"
+  ],
+  "expectation": {
+    "status": "refuted",
+    "red_team_verdict": "invalid_claim",
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "yes",
+    "assumption_statuses": {
+      "A1": "IMPOSSIBLE",
+      "A2": "PROVEN",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "BLOCKED",
+      "UNKNOWN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "decisive"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a PoC state produced by storage manipulation is not a reachable state",
+      "path": "adjudication.attack_path",
+      "value": "SUPPORTED",
+      "expect_error": "adjudication.attack_path is SUPPORTED but step 2 is BLOCKED"
+    },
+    {
+      "name": "impossible state cannot be downgraded to merely unproven while keeping the refutation",
+      "path": "status",
+      "value": "weakened",
+      "expect_error": "red_team_verdict invalid_claim requires status refuted"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "uncertain",
+      "claimed_impact": "Share price inversion lets a depositor withdraw more than deposited",
+      "claimed_severity": "High"
+    },
+    "status": "refuted",
+    "prosecutor": {
+      "strongest_claim": "When totalShares exceeds totalAssets the conversion rounds in the redeemer's favor and drains the pool.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Pool.sol:210 convertToAssets()"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any depositor can call redeem().",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Pool.sol:188"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Pool.redeem(uint256)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Pool.sol:188"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "totalShares > totalAssets.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "execution_path": {
+          "statement": "convertToAssets() multiplies before dividing and returns more than the deposit under that state.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Pool.sol:210-218"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "A redeemer never receives more assets than the shares represent.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Pool.sol:210"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The pool is drained by repeated redemption.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "Every write site maintains totalAssets >= totalShares, so the state the PoC assumes cannot arise in the protocol.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Pool.sol:150-186 deposit and withdraw accounting"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "state",
+          "statement": "deposit() mints shares at or below the asset increment and withdraw() burns at or above it; the inequality is preserved at every write site.",
+          "strength": "decisive",
+          "targets": [
+            "technical_claim",
+            "attack_path",
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Pool.sol:150-186"
+            },
+            {
+              "kind": "execution",
+              "ref": "echidna: invariant totalAssets >= totalShares held over 200k calls"
+            }
+          ]
+        },
+        {
+          "axis": "preconditions",
+          "statement": "The PoC sets the state with vm.store rather than through protocol calls.",
+          "strength": "strong",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "report",
+              "ref": "report PoC line 44: vm.store(pool, slot 3, ...)"
+            }
+          ]
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "redeem() is reachable, but only the conversion under an unreachable state is harmful.",
+        "support": "PARTIALLY_SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:188"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The precondition is established by direct storage writes in the PoC, not by protocol calls.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "report",
+            "ref": "report PoC line 44: vm.store"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No privilege is required; the barrier is the state invariant, not access control.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:188"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "All write sites preserve totalAssets >= totalShares.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:150-186"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The conversion defect is real but only under a state the protocol cannot enter.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:210-218"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "totalShares can exceed totalAssets through protocol calls.",
+        "status": "IMPOSSIBLE",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:150-186"
+          },
+          {
+            "kind": "execution",
+            "ref": "echidna invariant run, 200k calls, no counterexample"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "convertToAssets() rounds in the redeemer's favor under that state.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:210-218"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "Any depositor can call redeem().",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:188"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "ordinary_user",
+        "transition": "Attacker deposits to obtain shares.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:150"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "protocol_controlled",
+        "transition": "Pool accounting reaches totalShares > totalAssets.",
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:150-186"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "ordinary_user",
+        "transition": "Attacker redeems at the inverted rate.",
+        "status": "UNKNOWN",
+        "evidence": []
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "technical_claim",
+          "attack_path",
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "deposit() mints shares at or below the asset increment and withdraw() burns at or above it, so no protocol call sequence reaches totalShares > totalAssets; the PoC reaches it with vm.store.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:150-186"
+          },
+          {
+            "kind": "execution",
+            "ref": "echidna: invariant held over 200k calls"
+          }
+        ],
+        "state": "totalAssets >= totalShares",
+        "call_sequence": "deposit/withdraw/redeem in any order",
+        "refutes_assumptions": [
+          "A1"
+        ],
+        "blocks_steps": [
+          2
+        ]
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "Every accounting write site preserves totalAssets >= totalShares.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Pool.sol:150-186"
+          }
+        ]
+      },
+      {
+        "fact": "The PoC establishes its precondition with a direct storage write.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "report",
+            "ref": "report PoC line 44"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "None; the required accounting state is unreachable",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "no",
+      "bounded": "yes",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "No attacker capability reaches the required state.",
+      "policy_alignment": "No demonstrated in-scope impact, so no severity tier applies.",
+      "unproven_dependencies": [
+        "totalShares > totalAssets reachable through protocol calls"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "The rounding behavior of convertToAssets() under the assumed state is real.",
+      "strongest_opposing_evidence": "Every write site preserves the opposite inequality, and the PoC only reaches the state with vm.store.",
+      "counterargument_defeats_finding": "yes",
+      "unresolved_assumptions": [],
+      "rationale": "The conversion defect is genuine but conditioned on a state the protocol cannot enter; the PoC substitutes storage manipulation for a reachable call sequence."
+    },
+    "red_team_verdict": "invalid_claim"
+  }
+}

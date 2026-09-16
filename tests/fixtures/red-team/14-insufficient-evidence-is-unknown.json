@@ -1,0 +1,327 @@
+{
+  "schema_version": "1.0",
+  "case_id": "14-insufficient-evidence-is-unknown",
+  "title": "Finding where the evidence is insufficient and the correct result is UNKNOWN",
+  "scenario": "A black-box report describes an inconsistent balance after a failed transfer, with one screenshot and no request capture, no source access and no reproduction. Nothing contradicts the report; nothing establishes it either.",
+  "exercises": [
+    "insufficient evidence produces UNKNOWN rather than a refutation",
+    "each unknown axis carries the question that would resolve it"
+  ],
+  "expectation": {
+    "status": "insufficient_evidence",
+    "red_team_verdict": "needs_information",
+    "adjudication": {
+      "technical_claim": "UNKNOWN",
+      "attack_path": "UNKNOWN",
+      "impact": "UNKNOWN",
+      "severity_claim": "UNKNOWN"
+    },
+    "counterargument_defeats_finding": "undetermined",
+    "assumption_statuses": {
+      "A1": "UNKNOWN",
+      "A2": "UNKNOWN",
+      "A3": "UNKNOWN"
+    },
+    "attack_path_statuses": [
+      "UNKNOWN",
+      "UNKNOWN",
+      "INFERRED"
+    ],
+    "counterexample_strengths": {
+      "CE1": "plausible"
+    },
+    "unresolved_assumptions": [
+      "A1",
+      "A2",
+      "A3"
+    ],
+    "severity_support": "UNKNOWN"
+  },
+  "mutations": [
+    {
+      "name": "missing evidence is not contradicting evidence",
+      "path": "adjudication.technical_claim",
+      "value": "UNSUPPORTED",
+      "expect_error": "technical_claim is UNSUPPORTED but no decisive or strong counterexample with evidence targets it"
+    },
+    {
+      "name": "an unknown axis must keep the question that would resolve it",
+      "path": "unresolved_questions",
+      "value": [],
+      "expect_error": "adjudication.technical_claim is UNKNOWN but no unresolved question blocks that axis"
+    },
+    {
+      "name": "an unestablished finding cannot be reported as technically valid",
+      "path": "red_team_verdict",
+      "value": "technically_valid",
+      "expect_error": "red_team_verdict technically_valid requires adjudication.technical_claim = SUPPORTED"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "uncertain",
+      "claimed_impact": "Balance inconsistency after a failed transfer",
+      "claimed_severity": "Medium"
+    },
+    "status": "insufficient_evidence",
+    "prosecutor": {
+      "strongest_claim": "A failed transfer leaves the sender debited and the recipient uncredited, which would be an accounting divergence.",
+      "evidence": [
+        {
+          "kind": "report",
+          "ref": "report section 2 with one screenshot of the account page"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "An ordinary account holder triggers the failing transfer.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "entry_point": {
+          "statement": "The transfer form on the account page; no endpoint is named in the report.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "required_state": {
+          "statement": "A transfer that fails after the debit is applied.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "execution_path": {
+          "statement": "Unknown; the report supplies no request capture, log, or source reference.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "violated_property": {
+          "statement": "A failed transfer leaves both balances unchanged.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "impact": {
+          "statement": "Funds are unaccounted for between the two balances.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "The screenshot may show a stale cached balance rather than an accounting divergence, but nothing available establishes either reading.",
+      "evidence": [],
+      "challenges": [
+        {
+          "axis": "state",
+          "statement": "The displayed balance may be a cached view refreshed asynchronously.",
+          "strength": "plausible",
+          "targets": [
+            "technical_claim",
+            "impact"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "reachability",
+          "statement": "No endpoint, request, or parameter is identified, so the path cannot be examined.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "preconditions",
+          "statement": "The failure condition that produced the screenshot is not described.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "privileges",
+          "statement": "The account context in the screenshot is not established.",
+          "strength": "plausible",
+          "targets": [
+            "technical_claim"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "impact",
+          "statement": "No second observation confirms that funds were actually unaccounted for.",
+          "strength": "plausible",
+          "targets": [
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "No endpoint or request is identified, so reachability cannot be assessed.",
+        "support": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The failure condition is not described in the report.",
+        "support": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "axis": "privileges",
+        "finding": "The account context is not established.",
+        "support": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "axis": "state",
+        "finding": "A single screenshot cannot distinguish a cached view from a stored balance.",
+        "support": "UNKNOWN",
+        "evidence": [
+          {
+            "kind": "report",
+            "ref": "report section 2 screenshot"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "No evidence establishes or excludes an accounting divergence.",
+        "support": "UNKNOWN",
+        "evidence": []
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "The displayed balance reflects stored state rather than a cached view.",
+        "status": "UNKNOWN",
+        "decisive": true,
+        "evidence": []
+      },
+      {
+        "id": "A2",
+        "statement": "The transfer actually failed rather than completing asynchronously.",
+        "status": "UNKNOWN",
+        "decisive": true,
+        "evidence": []
+      },
+      {
+        "id": "A3",
+        "statement": "The two observations were taken from the same account and session.",
+        "status": "UNKNOWN",
+        "decisive": false,
+        "evidence": []
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "ordinary_user",
+        "transition": "Account holder submits a transfer that fails.",
+        "status": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "step": 2,
+        "actor_class": "protocol_controlled",
+        "transition": "Sender balance is debited without a matching credit.",
+        "status": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "step": 3,
+        "actor_class": "ordinary_user",
+        "transition": "Account holder observes the inconsistent balance.",
+        "status": "INFERRED",
+        "evidence": [
+          {
+            "kind": "report",
+            "ref": "report section 2 screenshot"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "technical_claim",
+          "impact"
+        ],
+        "reason": "A cached balance view would produce the same screenshot without any accounting divergence; the available evidence does not distinguish the two.",
+        "strength": "plausible",
+        "evidence": [],
+        "state": "cached balance view",
+        "condition": "asynchronous cache refresh"
+      }
+    ],
+    "decisive_facts": [],
+    "unresolved_questions": [
+      {
+        "id": "Q1",
+        "question": "Which endpoint processed the transfer, and what did it return?",
+        "blocks": [
+          "technical_claim",
+          "attack_path"
+        ],
+        "how_to_resolve": "Ask the reporter for the request and response pair, or a HAR capture of the failing transfer."
+      },
+      {
+        "id": "Q2",
+        "question": "Does the account page read a stored balance or a cached projection?",
+        "blocks": [
+          "technical_claim",
+          "impact"
+        ],
+        "how_to_resolve": "Ask the reporter to re-read the balance after a forced refresh, or request the balance endpoint response."
+      },
+      {
+        "id": "Q3",
+        "question": "Was the amount actually missing from the ledger, or only from the view?",
+        "blocks": [
+          "impact",
+          "severity_claim"
+        ],
+        "how_to_resolve": "Ask the reporter for the transaction history for both accounts around the failure timestamp."
+      }
+    ],
+    "severity_challenge": {
+      "claimed_severity": "Medium",
+      "demonstrated_impact": "None established; only a single screenshot is available",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNKNOWN",
+      "reproducible": "unknown",
+      "bounded": "unknown",
+      "reversible": "unknown",
+      "persistent": "unknown",
+      "attacker_requirements": "An ordinary account holder, if the behavior exists at all.",
+      "policy_alignment": "No impact tier can be applied until the behavior is established.",
+      "unproven_dependencies": [
+        "The displayed balance reflects stored state",
+        "The transfer genuinely failed"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "UNKNOWN",
+      "attack_path": "UNKNOWN",
+      "impact": "UNKNOWN",
+      "severity_claim": "UNKNOWN",
+      "strongest_supporting_evidence": "The screenshot shows two balances that do not reconcile.",
+      "strongest_opposing_evidence": "A cached view would produce the same screenshot, and nothing distinguishes the two readings.",
+      "counterargument_defeats_finding": "undetermined",
+      "unresolved_assumptions": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "rationale": "Nothing contradicts the report and nothing establishes it. This is unknown, not false: the correct output is an information request, not a rejection."
+    },
+    "red_team_verdict": "needs_information"
+  }
+}

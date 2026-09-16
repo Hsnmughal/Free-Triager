@@ -1,0 +1,384 @@
+{
+  "schema_version": "1.0",
+  "case_id": "03-unreachable-vulnerable-branch",
+  "title": "Finding with an unreachable vulnerable branch",
+  "scenario": "The arithmetic defect in the legacy settlement branch is real, but every caller reaches settlement through a wrapper that sets the legacy flag to false, and the flag has no setter.",
+  "exercises": [
+    "a real code defect in an unreachable branch is not an exploitable finding",
+    "a BLOCKED path link must be blocked by a named counterexample"
+  ],
+  "expectation": {
+    "status": "refuted",
+    "red_team_verdict": "invalid_claim",
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "yes",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "IMPOSSIBLE",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "BLOCKED",
+      "UNKNOWN",
+      "UNKNOWN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "decisive"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a blocked link cannot be blocked on intuition alone",
+      "path": "counterexamples.0.strength",
+      "value": "speculative",
+      "expect_error": "attack_path step 2 is BLOCKED but no decisive or strong counterexample blocks that step"
+    },
+    {
+      "name": "an unreachable branch cannot be adjudicated as a supported attack path",
+      "path": "adjudication.attack_path",
+      "value": "SUPPORTED",
+      "expect_error": "adjudication.attack_path is SUPPORTED but step 2 is BLOCKED"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "uncertain",
+      "claimed_impact": "Theft of unclaimed yield through a rounding error in legacy settlement",
+      "claimed_severity": "High"
+    },
+    "status": "refuted",
+    "prosecutor": {
+      "strongest_claim": "The legacy settlement branch rounds in the caller's favor, letting a caller drain yield one wei at a time.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Settlement.sol:301-317"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can call settle().",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Settlement.sol:240"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Settlement.settle(address,uint256)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Settlement.sol:240"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "legacyMode must be true when settlement runs.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "execution_path": {
+          "statement": "settle() dispatches to _settleLegacy() when legacyMode is set, which rounds up in favor of the caller.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Settlement.sol:301-317"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Settlement rounds against the caller.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Settlement.sol:309"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "Repeated settlement extracts unclaimed yield.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "legacyMode is initialized false and has no setter, so _settleLegacy() is dead code in every deployment.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Settlement.sol:44 legacyMode = false"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "reachability",
+          "statement": "The legacy branch has no reachable predecessor: the flag is false at construction and never written again.",
+          "strength": "decisive",
+          "targets": [
+            "attack_path",
+            "technical_claim",
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Settlement.sol:44"
+            },
+            {
+              "kind": "code",
+              "ref": "grep -n legacyMode contracts/: only read sites"
+            }
+          ]
+        },
+        {
+          "axis": "state",
+          "statement": "No upgrade path writes the flag; the contract is not behind a proxy.",
+          "strength": "strong",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "config",
+              "ref": "deployments/mainnet/Settlement.json: proxy == none"
+            }
+          ]
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "The vulnerable branch is unreachable: legacyMode is false at construction and has no setter.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:44"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The single precondition, legacyMode == true, cannot be established by anyone.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:44"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "Not a privilege question: no actor at any level can set the flag.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "grep -n legacyMode contracts/: no write sites"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The contract is not upgradeable, so the state cannot be introduced later.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/Settlement.json: proxy == none"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The rounding defect is real but cannot execute, so no impact follows.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:301-317"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "Any address can call settle().",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:240"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "legacyMode can be true at settlement time.",
+        "status": "IMPOSSIBLE",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:44 and no write sites"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "The rounding direction in _settleLegacy() favors the caller.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:309"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker calls settle() with a target account.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:240"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "protocol_controlled",
+        "transition": "Dispatch enters _settleLegacy() because legacyMode is true.",
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:44"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "Rounding credits the caller one wei per settlement.",
+        "status": "UNKNOWN",
+        "evidence": []
+      },
+      {
+        "step": 4,
+        "actor_class": "permissionless",
+        "transition": "Attacker repeats settlement to accumulate yield.",
+        "status": "UNKNOWN",
+        "evidence": []
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "attack_path",
+          "technical_claim",
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "legacyMode is assigned false at construction and appears at no write site in the codebase, so the legacy branch has no reachable predecessor.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:44"
+          },
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:296 dispatch guard"
+          }
+        ],
+        "function": "Settlement._settleLegacy()",
+        "condition": "legacyMode == true",
+        "call_sequence": "settle() -> dispatch guard at :296 -> _settleModern()",
+        "refutes_assumptions": [
+          "A2"
+        ],
+        "blocks_steps": [
+          2
+        ]
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "legacyMode is false at construction and has no write site in the deployed code.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:44"
+          }
+        ]
+      },
+      {
+        "fact": "The rounding defect in the legacy branch is real but unreachable.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Settlement.sol:301-317"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "None; the vulnerable branch cannot execute",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "no",
+      "bounded": "yes",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "No actor can satisfy the branch precondition.",
+      "policy_alignment": "No demonstrated in-scope impact, so no severity tier applies.",
+      "unproven_dependencies": [
+        "legacyMode can become true"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "The rounding direction at contracts/Settlement.sol:309 does favor the caller.",
+      "strongest_opposing_evidence": "legacyMode is false at construction and has no write site, so the branch is dead code.",
+      "counterargument_defeats_finding": "yes",
+      "unresolved_assumptions": [],
+      "rationale": "The defect is genuine but sits behind a flag no actor can set; the attack path is blocked at its first protocol transition."
+    },
+    "red_team_verdict": "invalid_claim"
+  }
+}

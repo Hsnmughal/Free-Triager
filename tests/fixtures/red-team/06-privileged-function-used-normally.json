@@ -1,0 +1,393 @@
+{
+  "schema_version": "1.0",
+  "case_id": "06-privileged-function-used-normally",
+  "title": "Privileged function used correctly by the protocol",
+  "scenario": "The report describes the admin pause and the subsequent forced settlement as privilege escalation. The admin is performing the documented incident procedure, and the attacker can neither trigger it nor benefit from it.",
+  "exercises": [
+    "a privileged actor performing an authorized operation is not an attacker",
+    "escalation requires a capability the attacker does not already hold"
+  ],
+  "expectation": {
+    "status": "refuted",
+    "red_team_verdict": "invalid_claim",
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "yes",
+    "assumption_statuses": {
+      "A1": "IMPOSSIBLE",
+      "A2": "IMPOSSIBLE",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "BLOCKED",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "decisive",
+      "CE2": "decisive"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "normal privileged operation must not be recorded as a supported attack path",
+      "path": "adjudication.attack_path",
+      "value": "SUPPORTED",
+      "expect_error": "adjudication.attack_path is SUPPORTED but step 1 is BLOCKED"
+    },
+    {
+      "name": "a refuted escalation claim cannot also be reported as technically valid",
+      "path": "red_team_verdict",
+      "value": "technically_valid",
+      "expect_error": "red_team_verdict technically_valid requires adjudication.technical_claim = SUPPORTED"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "uncertain",
+      "claimed_impact": "Privilege escalation through admin-forced settlement",
+      "claimed_severity": "Medium"
+    },
+    "status": "refuted",
+    "prosecutor": {
+      "strongest_claim": "Forced settlement during a pause lets a privileged actor close positions at a stale price.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Perp.sol:410 forceSettle()"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "The attacker can cause the admin to pause and force settlement.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "entry_point": {
+          "statement": "Perp.forceSettle(address[])",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Perp.sol:410"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "The market is paused and the oracle price is stale.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Perp.sol:398 pause sets lastPrice"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "forceSettle() closes positions at lastPrice rather than the current oracle price.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Perp.sol:410-432"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Positions settle at a current price.",
+          "basis": "assumed",
+          "evidence": []
+        },
+        "impact": {
+          "statement": "The admin can extract value from open positions.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "The admin already holds unilateral upgrade authority, so forced settlement grants no capability it does not already possess, and no attacker-reachable path triggers the pause.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Perp.sol:24 UUPS upgrade authority held by the same admin"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "privileges",
+          "statement": "forceSettle() is administrator-only and the same administrator can already upgrade the implementation; the path adds no capability.",
+          "strength": "decisive",
+          "targets": [
+            "technical_claim",
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Perp.sol:24"
+            },
+            {
+              "kind": "code",
+              "ref": "contracts/Perp.sol:404 onlyAdmin"
+            }
+          ]
+        },
+        {
+          "axis": "reachability",
+          "statement": "No permissionless input causes the pause; it is called directly by the admin multisig.",
+          "strength": "decisive",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Perp.sol:394 onlyAdmin pause()"
+            },
+            {
+              "kind": "log",
+              "ref": "incident runbook execution 2026-04-02, tx 0x8f21"
+            }
+          ]
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "Neither pause() nor forceSettle() is reachable by an unprivileged caller.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:394, 404 onlyAdmin"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The pause precondition is created by the admin exercising the documented runbook.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "log",
+            "ref": "incident runbook execution 2026-04-02"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "The actor is the administrator performing an authorized operation, not an attacker.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:404"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The stale-price state is a documented consequence of pausing and is disclosed in the docs.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "external",
+            "ref": "docs/incident-procedure.md section 4"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "No unprivileged victim is harmed by a path only the admin can walk and only the admin benefits from.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:410-432"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "An attacker can trigger the pause.",
+        "status": "IMPOSSIBLE",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:394 onlyAdmin"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "forceSettle() grants the admin a capability it does not already hold.",
+        "status": "IMPOSSIBLE",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:24 UUPS upgrade authority"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "Settlement uses lastPrice while paused.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:410-432"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker causes conditions that lead the admin to pause the market.",
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:394"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "administrator",
+        "transition": "Admin calls forceSettle() under the incident runbook.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "log",
+            "ref": "incident runbook execution 2026-04-02, tx 0x8f21"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "ordinary_user",
+        "transition": "Position holder settles at lastPrice.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:410-432"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "attack_path"
+        ],
+        "reason": "pause() is onlyAdmin and takes no attacker-controlled input, so no permissionless action reaches step 1.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:394"
+          }
+        ],
+        "function": "Perp.pause()",
+        "condition": "msg.sender == admin",
+        "refutes_assumptions": [
+          "A1"
+        ],
+        "blocks_steps": [
+          1
+        ]
+      },
+      {
+        "id": "CE2",
+        "targets": [
+          "technical_claim",
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "The admin already holds UUPS upgrade authority over the same contract, so forced settlement provides no capability it lacks; there is no escalation to describe.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:24"
+          }
+        ],
+        "function": "Perp._authorizeUpgrade()",
+        "condition": "onlyAdmin",
+        "refutes_assumptions": [
+          "A2"
+        ]
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "The same admin already holds upgrade authority over the contract.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Perp.sol:24"
+          }
+        ]
+      },
+      {
+        "fact": "The pause is documented incident procedure and took no attacker input.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "external",
+            "ref": "docs/incident-procedure.md section 4"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "Medium",
+      "demonstrated_impact": "None; the described actor is the administrator acting within its authority",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "no",
+      "bounded": "yes",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "Administrator authority that the attacker cannot obtain or influence.",
+      "policy_alignment": "The program excludes privileged-actor operation that grants no new capability; the exclusion wording covers this scenario.",
+      "unproven_dependencies": [
+        "Attacker influence over the pause decision"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "UNSUPPORTED",
+      "attack_path": "UNSUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "Settlement at lastPrice during a pause is real and is what the code does.",
+      "strongest_opposing_evidence": "The administrator already holds upgrade authority, so no escalation occurs, and no attacker input reaches the pause.",
+      "counterargument_defeats_finding": "yes",
+      "unresolved_assumptions": [],
+      "rationale": "The behavior is real and is normal privileged operation; escalation requires a capability gain, and none exists here."
+    },
+    "red_team_verdict": "invalid_claim"
+  }
+}

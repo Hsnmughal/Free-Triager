@@ -31,6 +31,7 @@
         "program_policy",
         "eligibility_gate",
         "technical_validation",
+        "red_team_validation",
         "verdict_and_improvement",
         "report_revision"
       ]

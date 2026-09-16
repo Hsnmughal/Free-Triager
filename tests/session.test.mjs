@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
+import { validRedTeamResult } from "./helpers/red-team.mjs";
+
 const script = path.resolve(import.meta.dirname, "..", "scripts", "session.mjs");
 const PROGRAM_URL = "https://immunefi.com/bug-bounty/example/information/";
 
@@ -37,9 +39,11 @@ function workerPayload(phase, decision = "continue", source = {}) {
       poc_validation: {}, poc_execution_status: "statically_verified_not_executed", poc_compliance_checklist: [],
       steelman: {}, skeptic: {}, technical_verdict: "supported",
     },
+    red_team_validation: validRedTeamResult(),
     verdict_and_improvement: {
       target_category: "smart_contract", profile_summary: {}, verdict: "ready", severity: "High", severity_basis: {},
-      likelihood: {}, automated_triage_readiness: {}, human_merits: {}, submission_recommendation: "submit",
+      severity_confidence: "high", likelihood: {}, red_team_summary: {}, automated_triage_readiness: {}, human_merits: {},
+      submission_recommendation: "submit",
       fee_risk: {}, rejection_risks: [], improvements: [], report_outline: [], template_compliance_checklist: [], confidence: "high",
     },
   };
@@ -284,4 +288,104 @@ test("accepts technology-neutral routing for every target category and mixed fin
     assert.equal(appended.status, 0, `${route.primary}: ${appended.stderr}`);
     assert.equal(run(["verify", "--session", session], root).status, 0);
   }
+});
+
+test("runs the full pipeline through red-team validation to the verdict", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "free-triager-test-"));
+  const report = path.join(root, "report.md");
+  fs.writeFileSync(report, "# Finding\n", "utf8");
+  assert.equal(run([
+    "init", "--root", root, "--platform", "immunefi", "--mode", "dynamic",
+    "--program-url", PROGRAM_URL, "--report", report, "--session", "full-run",
+  ], root).status, 0);
+
+  const session = path.join(root, ".free-triager", "runs", "full-run");
+  const phases = [
+    "prior_art", "program_policy", "eligibility_gate",
+    "technical_validation", "red_team_validation", "verdict_and_improvement",
+  ];
+  for (const phase of phases) {
+    const appended = run(
+      ["append", "--session", session, "--phase", phase, "--status", "complete"],
+      root,
+      JSON.stringify(workerPayload(phase)),
+    );
+    assert.equal(appended.status, 0, `${phase}: ${appended.stderr}`);
+  }
+
+  assert.equal(JSON.parse(run(["status", "--session", session], root).stdout).next_phase, "complete");
+  assert.equal(run(["verify", "--session", session], root).status, 0);
+});
+
+test("red-team validation cannot be appended before technical validation", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "free-triager-test-"));
+  const report = path.join(root, "report.md");
+  fs.writeFileSync(report, "# Finding\n", "utf8");
+  run([
+    "init", "--root", root, "--platform", "immunefi", "--mode", "dynamic",
+    "--program-url", PROGRAM_URL, "--report", report, "--session", "order-run",
+  ], root);
+
+  const session = path.join(root, ".free-triager", "runs", "order-run");
+  for (const phase of ["prior_art", "program_policy", "eligibility_gate"]) {
+    run(["append", "--session", session, "--phase", phase, "--status", "complete"], root, JSON.stringify(workerPayload(phase)));
+  }
+  const result = run(
+    ["append", "--session", session, "--phase", "red_team_validation", "--status", "complete"],
+    root,
+    JSON.stringify(workerPayload("red_team_validation")),
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /illegal transition: expected technical_validation/);
+});
+
+test("rejects a red-team checkpoint that challenges a different technical verdict", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "free-triager-test-"));
+  const report = path.join(root, "report.md");
+  fs.writeFileSync(report, "# Finding\n", "utf8");
+  run([
+    "init", "--root", root, "--platform", "immunefi", "--mode", "dynamic",
+    "--program-url", PROGRAM_URL, "--report", report, "--session", "drift-run",
+  ], root);
+
+  const session = path.join(root, ".free-triager", "runs", "drift-run");
+  for (const phase of ["prior_art", "program_policy", "eligibility_gate", "technical_validation"]) {
+    run(["append", "--session", session, "--phase", phase, "--status", "complete"], root, JSON.stringify(workerPayload(phase)));
+  }
+
+  const drifted = workerPayload("red_team_validation");
+  drifted.result.challenged_finding.technical_verdict = "refuted";
+  const result = run(
+    ["append", "--session", session, "--phase", "red_team_validation", "--status", "complete"],
+    root,
+    JSON.stringify(drifted),
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /does not match the technical_validation verdict/);
+});
+
+test("rejects a red-team checkpoint that refutes a finding on speculation", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "free-triager-test-"));
+  const report = path.join(root, "report.md");
+  fs.writeFileSync(report, "# Finding\n", "utf8");
+  run([
+    "init", "--root", root, "--platform", "immunefi", "--mode", "dynamic",
+    "--program-url", PROGRAM_URL, "--report", report, "--session", "speculation-run",
+  ], root);
+
+  const session = path.join(root, ".free-triager", "runs", "speculation-run");
+  for (const phase of ["prior_art", "program_policy", "eligibility_gate", "technical_validation"]) {
+    run(["append", "--session", session, "--phase", phase, "--status", "complete"], root, JSON.stringify(workerPayload(phase)));
+  }
+
+  const speculative = workerPayload("red_team_validation", "terminal");
+  speculative.result.status = "refuted";
+  speculative.result.red_team_verdict = "invalid_claim";
+  const result = run(
+    ["append", "--session", session, "--phase", "red_team_validation", "--status", "terminal"],
+    root,
+    JSON.stringify(speculative),
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status refuted requires at least one decisive counterexample/);
 });

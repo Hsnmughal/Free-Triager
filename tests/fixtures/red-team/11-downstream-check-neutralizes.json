@@ -1,0 +1,407 @@
+{
+  "schema_version": "1.0",
+  "case_id": "11-downstream-check-neutralizes",
+  "title": "Finding where a downstream check neutralizes the apparent vulnerability",
+  "scenario": "The fee calculation genuinely overflows into an absurd value, but the value is clamped to a maximum before it is ever used, so the miscomputation never reaches a security-sensitive operation.",
+  "exercises": [
+    "a real defect whose value is never consumed produces no impact",
+    "the technical anomaly is preserved while the impact claim is refuted"
+  ],
+  "expectation": {
+    "status": "weakened",
+    "red_team_verdict": "unsupported",
+    "adjudication": {
+      "technical_claim": "PARTIALLY_SUPPORTED",
+      "attack_path": "PARTIALLY_SUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "yes",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "IMPOSSIBLE",
+      "A3": "UNPROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "BLOCKED"
+    ],
+    "counterexample_strengths": {
+      "CE1": "decisive"
+    },
+    "unresolved_assumptions": [
+      "A3"
+    ],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a neutralized defect cannot be adjudicated as a supported impact",
+      "path": "adjudication.impact",
+      "value": "SUPPORTED",
+      "expect_error": "adjudication.impact is SUPPORTED but prosecutor.elements.impact.basis is not demonstrated"
+    },
+    {
+      "name": "the blocked consumption step must remain blocked in the path",
+      "path": "adjudication.attack_path",
+      "value": "SUPPORTED",
+      "expect_error": "adjudication.attack_path is SUPPORTED but step 4 is BLOCKED"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Fee overflow lets an attacker set an arbitrary protocol fee",
+      "claimed_severity": "High"
+    },
+    "status": "weakened",
+    "prosecutor": {
+      "strongest_claim": "An unchecked multiplication in the fee path produces an arbitrary fee for attacker-chosen inputs.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Fees.sol:88 unchecked multiplication"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can call quote() with arbitrary size.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Fees.sol:70"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Fees.quote(uint256 size)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Fees.sol:70"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "No special state is required.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Fees.sol:70-92"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "The unchecked block wraps and returns a fee far above the intended bound.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testFeeOverflow: raw fee 2**128"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "The computed fee stays within the configured maximum.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Fees.sol:88"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The inflated fee is charged to counterparties.",
+          "basis": "assumed",
+          "evidence": []
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "_clampFee() bounds the value to MAX_FEE_BPS before any caller consumes it, so the overflow never reaches a charge.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Fees.sol:104 _clampFee()"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "impact",
+          "statement": "Every consumer of quote() routes through _clampFee(), which bounds the result to MAX_FEE_BPS.",
+          "strength": "decisive",
+          "targets": [
+            "impact",
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Fees.sol:104-112"
+            },
+            {
+              "kind": "code",
+              "ref": "grep -n quote( contracts/: all call sites pass through _clampFee"
+            }
+          ]
+        },
+        {
+          "axis": "state",
+          "statement": "No stored state retains the raw value for later use.",
+          "strength": "strong",
+          "targets": [
+            "impact"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Fees.sol:70-92 returns a memory value"
+            }
+          ]
+        },
+        {
+          "axis": "reachability",
+          "statement": "quote() is reachable, but only the clamped result is observable.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "quote() is permissionless and the unchecked block executes as described.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:70-92"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "No precondition beyond a large size argument.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testFeeOverflow"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No privilege is involved.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:70"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The raw value is never stored; it exists only in memory.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:70-92"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "Every call site clamps the result, so no consumer sees the overflowed value.",
+        "support": "UNSUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:104-112"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "The multiplication overflows for attacker-chosen inputs.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testFeeOverflow"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "Some consumer uses the unclamped value.",
+        "status": "IMPOSSIBLE",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:104-112"
+          },
+          {
+            "kind": "code",
+            "ref": "grep -n quote( contracts/: all call sites clamp"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "The clamp bound is itself attacker controlled.",
+        "status": "UNPROVEN",
+        "decisive": false,
+        "evidence": []
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker calls quote() with a size that overflows the multiplication.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testFeeOverflow"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "protocol_controlled",
+        "transition": "The unchecked block returns a wrapped fee value.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:88"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "The value passes through _clampFee() before any use.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:104-112"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "ordinary_user",
+        "transition": "A counterparty is charged the inflated fee.",
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:104-112"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "impact",
+          "severity_claim"
+        ],
+        "reason": "The overflowed value is clamped to MAX_FEE_BPS at every call site before it is charged, so the miscomputation is never consumed in a security-sensitive operation.",
+        "strength": "decisive",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:104-112"
+          },
+          {
+            "kind": "code",
+            "ref": "grep -n quote( contracts/: 4 call sites, all clamped"
+          }
+        ],
+        "function": "Fees._clampFee()",
+        "condition": "fee > MAX_FEE_BPS",
+        "call_sequence": "quote() -> _clampFee() -> charge()",
+        "refutes_assumptions": [
+          "A2"
+        ],
+        "blocks_steps": [
+          4
+        ]
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "The unchecked multiplication does overflow for attacker-chosen inputs.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testFeeOverflow"
+          }
+        ]
+      },
+      {
+        "fact": "All four call sites clamp the value before charging.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Fees.sol:104-112"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "An overflowing intermediate value that is clamped before use",
+      "impact_class": "technical_anomaly",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "yes",
+      "bounded": "yes",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "None beyond gas, but the outcome is bounded by the clamp.",
+      "policy_alignment": "The program requires a demonstrated impact; a clamped intermediate value does not reach any impact tier.",
+      "unproven_dependencies": [
+        "A consumer that reads the unclamped value"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "PARTIALLY_SUPPORTED",
+      "attack_path": "PARTIALLY_SUPPORTED",
+      "impact": "UNSUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "The unchecked multiplication genuinely overflows, as the executed test shows.",
+      "strongest_opposing_evidence": "Every consumer clamps the result before use, so the overflow is never observed downstream.",
+      "counterargument_defeats_finding": "yes",
+      "unresolved_assumptions": [
+        "A3"
+      ],
+      "rationale": "The miscomputation is real and worth reporting as a code-quality defect, but the impact chain terminates at the clamp; the impact and severity claims are refuted while the anomaly itself stands."
+    },
+    "red_team_verdict": "unsupported"
+  }
+}

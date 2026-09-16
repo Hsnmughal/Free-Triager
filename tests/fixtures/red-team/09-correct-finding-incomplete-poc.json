@@ -1,0 +1,411 @@
+{
+  "schema_version": "1.0",
+  "case_id": "09-correct-finding-incomplete-poc",
+  "title": "Correct finding with an incomplete proof of concept",
+  "scenario": "The submitted PoC does not compile against the current commit, but the missing authorization check and the resulting cross-tenant read are both visible in the source and confirmed by a captured request pair.",
+  "exercises": [
+    "an incomplete PoC does not refute a demonstrable behavior",
+    "execution confidence is reported separately from technical validity"
+  ],
+  "expectation": {
+    "status": "withstood",
+    "red_team_verdict": "ready_with_changes",
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "PARTIALLY_SUPPORTED"
+    },
+    "counterargument_defeats_finding": "no",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "PROVEN",
+      "A4": "INFERRED"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "strong"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "PARTIALLY_SUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a broken PoC is not a refutation",
+      "path": "red_team_verdict",
+      "value": "invalid_claim",
+      "expect_error": "red_team_verdict invalid_claim requires status refuted"
+    },
+    {
+      "name": "a demonstrable behavior is not unknown merely because the PoC failed",
+      "path": "adjudication.technical_claim",
+      "value": "UNKNOWN",
+      "expect_error": "adjudication.technical_claim is UNKNOWN but no unresolved question blocks that axis"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Cross-tenant record disclosure through a missing authorization check",
+      "claimed_severity": "High"
+    },
+    "status": "withstood",
+    "prosecutor": {
+      "strongest_claim": "The export endpoint resolves the tenant from the request body instead of the session, so any authenticated user can read another tenant's records.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "src/api/export.ts:61 tenantId taken from req.body"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any authenticated user can call the export endpoint.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/api/export.ts:44 requireAuth only"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "POST /api/v2/export",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/api/routes.ts:118"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "A record exists under a different tenant id.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "response",
+              "ref": "captured response 200 with 412 foreign records, request id 7f2c9"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "The handler reads tenantId from the body and queries without comparing it to the session tenant.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/api/export.ts:61-78"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "A user reads only records belonging to their own tenant.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/api/export.ts:78 query lacks the session tenant predicate"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "Records of an arbitrary tenant are returned to the caller.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "response",
+              "ref": "captured response 200, request id 7f2c9, 412 foreign records"
+            }
+          ]
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "The PoC does not run against the current commit, so the behavior may already be fixed.",
+      "evidence": [
+        {
+          "kind": "report",
+          "ref": "report PoC fails to compile: missing exportClient import"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "reachability",
+          "statement": "A middleware may enforce the tenant predicate before the handler executes.",
+          "strength": "strong",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/api/middleware/tenant.ts:1-90 applies to /v1 routes only"
+            }
+          ]
+        },
+        {
+          "axis": "preconditions",
+          "statement": "The captured request pair may predate a fix on the current commit.",
+          "strength": "plausible",
+          "targets": [
+            "technical_claim"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "impact",
+          "statement": "The returned records may be redacted downstream before reaching the client.",
+          "strength": "plausible",
+          "targets": [
+            "impact"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "privileges",
+          "statement": "Authentication is required, so the attacker is not fully permissionless.",
+          "strength": "plausible",
+          "targets": [
+            "severity_claim"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "state",
+          "statement": "The foreign tenant id may have been guessable only in the test environment.",
+          "strength": "plausible",
+          "targets": [
+            "severity_claim"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "The tenant middleware is mounted on /v1 only; the /v2 export route bypasses it.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/routes.ts:110-120"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The handler on the current commit still reads tenantId from the body.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/export.ts:61 at commit 4c17ab2"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "Any authenticated user suffices; no elevated role is needed.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/export.ts:44"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "Tenant ids are sequential integers exposed in list responses.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "response",
+            "ref": "GET /api/v2/tenants returns sequential ids"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The captured response contains unredacted foreign records.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "response",
+            "ref": "captured response 200, request id 7f2c9"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "The /v2 export route bypasses the tenant middleware.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/routes.ts:110-120"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "The handler on the current commit still trusts the body tenantId.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/export.ts:61 at commit 4c17ab2"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "Foreign tenant ids are discoverable.",
+        "status": "PROVEN",
+        "decisive": false,
+        "evidence": [
+          {
+            "kind": "response",
+            "ref": "GET /api/v2/tenants returns sequential ids"
+          }
+        ]
+      },
+      {
+        "id": "A4",
+        "statement": "The volume of exposed records matches the report's estimate across all tenants.",
+        "status": "INFERRED",
+        "decisive": false,
+        "evidence": []
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "ordinary_user",
+        "transition": "Attacker authenticates as an ordinary tenant user.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "request",
+            "ref": "POST /api/v2/auth/login, request id 7f2c1"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "ordinary_user",
+        "transition": "Attacker posts an export request carrying a foreign tenantId.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "request",
+            "ref": "POST /api/v2/export body tenantId=418, request id 7f2c9"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "Handler queries by the body tenant id without the session predicate.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/export.ts:61-78"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "ordinary_user",
+        "transition": "Attacker receives 412 records belonging to tenant 418.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "response",
+            "ref": "captured response 200, request id 7f2c9"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "attack_path"
+        ],
+        "reason": "The tenant middleware would have blocked the request, but it is mounted only on the /v1 router.",
+        "strength": "strong",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/routes.ts:110-120"
+          }
+        ],
+        "function": "tenantMiddleware",
+        "condition": "router mount path === /v1"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "The /v2 export handler reads tenantId from the request body on the current commit.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "src/api/export.ts:61 at commit 4c17ab2"
+          }
+        ]
+      },
+      {
+        "fact": "A captured response returns foreign-tenant records to an ordinary user.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "response",
+            "ref": "captured response 200, request id 7f2c9"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "High",
+      "demonstrated_impact": "Read access to another tenant's records by any authenticated user",
+      "impact_class": "user_consequence",
+      "severity_support": "PARTIALLY_SUPPORTED",
+      "reproducible": "unknown",
+      "bounded": "no",
+      "reversible": "yes",
+      "persistent": "no",
+      "attacker_requirements": "A single ordinary authenticated account.",
+      "policy_alignment": "Matches the program's unauthorized access to sensitive data tier for web assets.",
+      "unproven_dependencies": []
+    },
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "PARTIALLY_SUPPORTED",
+      "strongest_supporting_evidence": "The handler queries by the body tenant id with no session predicate at src/api/export.ts:61-78.",
+      "strongest_opposing_evidence": "The submitted PoC does not compile against the current commit.",
+      "counterargument_defeats_finding": "no",
+      "unresolved_assumptions": [],
+      "rationale": "The PoC is broken, but the source at the current commit and the captured request pair establish the behavior independently; a broken PoC is a reproduction problem, not a refutation."
+    },
+    "red_team_verdict": "ready_with_changes"
+  }
+}

@@ -1,0 +1,400 @@
+{
+  "schema_version": "1.0",
+  "case_id": "08-correct-finding-exaggerated-severity",
+  "title": "Correct technical finding with an exaggerated severity claim",
+  "scenario": "The oracle staleness window is genuinely too wide and the mispricing is demonstrated. The report claims total protocol insolvency, but the demonstrated effect is bounded by a per-block borrow cap and reverses on the next oracle update.",
+  "exercises": [
+    "the technical finding survives while the severity claim does not",
+    "an unsupported severity claim never converts a valid finding into an invalid one"
+  ],
+  "expectation": {
+    "status": "weakened",
+    "red_team_verdict": "ready_with_changes",
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "PARTIALLY_SUPPORTED",
+      "severity_claim": "UNSUPPORTED"
+    },
+    "counterargument_defeats_finding": "no",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "UNPROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "strong"
+    },
+    "unresolved_assumptions": [
+      "A3"
+    ],
+    "severity_support": "UNSUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "an unsupported severity claim must not invalidate the technical finding",
+      "path": "red_team_verdict",
+      "value": "unsupported",
+      "expect_error": "must not invalidate a supported technical claim"
+    },
+    {
+      "name": "a severity claim resting on unproven dependencies cannot be adjudicated as supported",
+      "path": "adjudication.severity_claim",
+      "value": "SUPPORTED",
+      "expect_error": "severity_claim is SUPPORTED but severity_challenge.unproven_dependencies is not empty"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Protocol insolvency through stale oracle pricing",
+      "claimed_severity": "Critical"
+    },
+    "status": "weakened",
+    "prosecutor": {
+      "strongest_claim": "A 30-minute staleness window lets a borrower open a position at a price that no longer reflects the market.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Oracle.sol:72 STALENESS_WINDOW = 30 minutes"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can borrow against the mispriced collateral.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Lending.sol:140 borrow()"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Lending.borrow(uint256)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Lending.sol:140"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "The oracle answer is between 1 and 30 minutes old during a price move.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "trace",
+              "ref": "mainnet fork 21203114: answer age 22 min, spot deviation 6.4 percent"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "borrow() reads the stale answer and sizes the loan against it.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Lending.sol:140-166"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Loans are sized against a current collateral price.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Lending.sol:152"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The borrower extracts value equal to the deviation, capped by the per-block borrow cap.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testStaleOracleBorrow: 41 ETH extracted against a 640 ETH cap"
+            }
+          ]
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "The loss per event is capped by the per-block borrow limit and reverses at the next oracle update, so insolvency does not follow.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Lending.sol:96 BORROW_CAP_PER_BLOCK"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "impact",
+          "statement": "The mispricing is real but the extraction is bounded by the per-block cap.",
+          "strength": "strong",
+          "targets": [
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Lending.sol:96"
+            },
+            {
+              "kind": "execution",
+              "ref": "forge test -m testStaleOracleBorrow"
+            }
+          ]
+        },
+        {
+          "axis": "state",
+          "statement": "Insolvency would additionally require the reserve buffer to be exhausted, which the report does not demonstrate.",
+          "strength": "strong",
+          "targets": [
+            "severity_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "state",
+              "ref": "reserve buffer 4,180 ETH at block 21203114"
+            }
+          ]
+        },
+        {
+          "axis": "reachability",
+          "statement": "The window may be shortened by the keeper configuration in practice.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "borrow() is permissionless and reads the oracle on every call.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Lending.sol:140-166"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "A stale-but-accepted answer during a price move is observed on mainnet.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "trace",
+            "ref": "mainnet fork 21203114"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "No privilege is required at any step.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Lending.sol:140"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "The required state occurs naturally during volatility.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "trace",
+            "ref": "mainnet fork 21203114"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "Value extraction is demonstrated but bounded; protocol insolvency is not.",
+        "support": "PARTIALLY_SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testStaleOracleBorrow: 41 ETH against a 4,180 ETH buffer"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "The oracle accepts answers up to 30 minutes old.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Oracle.sol:72"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "A price deviation large enough to profit occurs within that window.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "trace",
+            "ref": "mainnet fork 21203114: 6.4 percent deviation"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "The extraction can be repeated until the protocol is insolvent.",
+        "status": "UNPROVEN",
+        "decisive": false,
+        "evidence": []
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker monitors for a price move while the oracle answer is stale.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "trace",
+            "ref": "mainnet fork 21203114"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "permissionless",
+        "transition": "Attacker borrows against collateral valued at the stale price.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Lending.sol:140-166"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "protocol_controlled",
+        "transition": "Position is recorded at the stale valuation.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testStaleOracleBorrow"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "permissionless",
+        "transition": "Attacker retains the difference once the oracle updates.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "41 ETH net extraction"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "severity_claim"
+        ],
+        "reason": "The per-block borrow cap limits a single event to 640 ETH against a 4,180 ETH reserve buffer, so insolvency does not follow from the demonstrated behavior.",
+        "strength": "strong",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Lending.sol:96"
+          },
+          {
+            "kind": "state",
+            "ref": "reserve buffer 4,180 ETH at block 21203114"
+          }
+        ],
+        "function": "Lending.borrow()",
+        "condition": "blockBorrowed + amount <= BORROW_CAP_PER_BLOCK"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "The staleness window is 30 minutes and borrow() accepts an answer at the edge of it.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Oracle.sol:72"
+          }
+        ]
+      },
+      {
+        "fact": "Per-event extraction is bounded by the per-block borrow cap.",
+        "direction": "opposes_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Lending.sol:96"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "Critical",
+      "demonstrated_impact": "Bounded value extraction of 41 ETH per stale-price event",
+      "impact_class": "economic_consequence",
+      "severity_support": "UNSUPPORTED",
+      "reproducible": "yes",
+      "bounded": "yes",
+      "reversible": "no",
+      "persistent": "no",
+      "attacker_requirements": "None beyond gas and the ability to observe a price move.",
+      "policy_alignment": "The demonstrated impact maps to the program's theft of unclaimed yield tier, not to insolvency.",
+      "unproven_dependencies": [
+        "Repetition until the reserve buffer is exhausted",
+        "Absence of a keeper that shortens the window"
+      ]
+    },
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "PARTIALLY_SUPPORTED",
+      "severity_claim": "UNSUPPORTED",
+      "strongest_supporting_evidence": "The stale answer is accepted and priced into the loan at contracts/Lending.sol:152.",
+      "strongest_opposing_evidence": "The per-block borrow cap bounds each event well below the reserve buffer.",
+      "counterargument_defeats_finding": "no",
+      "unresolved_assumptions": [
+        "A3"
+      ],
+      "rationale": "The mispricing and the extraction are demonstrated; the insolvency claim is not. The finding stands with a reduced severity claim."
+    },
+    "red_team_verdict": "ready_with_changes"
+  }
+}

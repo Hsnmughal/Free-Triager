@@ -1,0 +1,399 @@
+{
+  "schema_version": "1.0",
+  "case_id": "07-privileged-function-real-escalation",
+  "title": "Privileged function that does enable attacker-controlled escalation",
+  "scenario": "The mirror of the previous case. A privileged function appears in the path, but a permissionless relayer forwards attacker-controlled calldata into it without validating the target, so the attacker reaches the privileged operation through an unprivileged entry point.",
+  "exercises": [
+    "a privileged component in the path does not by itself invalidate a finding",
+    "the attacker obtains the capability through a permissionless wrapper"
+  ],
+  "expectation": {
+    "status": "withstood",
+    "red_team_verdict": "technically_valid",
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED"
+    },
+    "counterargument_defeats_finding": "no",
+    "assumption_statuses": {
+      "A1": "PROVEN",
+      "A2": "PROVEN",
+      "A3": "PROVEN"
+    },
+    "attack_path_statuses": [
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN",
+      "PROVEN"
+    ],
+    "counterexample_strengths": {
+      "CE1": "plausible"
+    },
+    "unresolved_assumptions": [],
+    "severity_support": "SUPPORTED"
+  },
+  "mutations": [
+    {
+      "name": "a privileged component in the path is not a refutation",
+      "path": "adjudication.technical_claim",
+      "value": "UNSUPPORTED",
+      "expect_error": "technical_claim is UNSUPPORTED but no decisive or strong counterexample with evidence targets it"
+    },
+    {
+      "name": "a real escalation cannot be filed as insufficient evidence",
+      "path": "status",
+      "value": "insufficient_evidence",
+      "expect_error": "status insufficient_evidence requires at least one UNKNOWN adjudication axis"
+    }
+  ],
+  "result": {
+    "challenged_finding": {
+      "source_phase": "technical_validation",
+      "technical_verdict": "supported",
+      "claimed_impact": "Arbitrary allowance grant through a permissionless relayer",
+      "claimed_severity": "Critical"
+    },
+    "status": "withstood",
+    "prosecutor": {
+      "strongest_claim": "The relayer executes attacker-supplied calldata under its own trusted identity, letting an attacker invoke an operator-only allowance grant.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Relayer.sol:96 execute() forwards calldata unchecked"
+        }
+      ],
+      "elements": {
+        "attacker_capability": {
+          "statement": "Any address can submit a relay request.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Relayer.sol:88 no access modifier"
+            }
+          ]
+        },
+        "entry_point": {
+          "statement": "Relayer.execute(address target, bytes data)",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Relayer.sol:88"
+            }
+          ]
+        },
+        "required_state": {
+          "statement": "The relayer holds OPERATOR_ROLE on the vault.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "config",
+              "ref": "deployments/mainnet/AccessRegistry.json: OPERATOR_ROLE -> Relayer"
+            }
+          ]
+        },
+        "execution_path": {
+          "statement": "execute() calls target.call(data) with no target or selector allowlist, so approveFor() runs with the relayer as msg.sender.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Relayer.sol:96-104"
+            }
+          ]
+        },
+        "violated_property": {
+          "statement": "Only an operator may grant a vault allowance.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Vault.sol:270 onlyOperator approveFor()"
+            }
+          ]
+        },
+        "impact": {
+          "statement": "The attacker grants itself an unlimited allowance over vault assets and transfers them out.",
+          "basis": "demonstrated",
+          "evidence": [
+            {
+              "kind": "execution",
+              "ref": "forge test -m testRelayerGrantsAllowance: allowance == type(uint256).max"
+            }
+          ]
+        }
+      }
+    },
+    "defender": {
+      "strongest_counterargument": "approveFor() is operator-only, so the finding may simply be describing intended privileged behavior.",
+      "evidence": [
+        {
+          "kind": "code",
+          "ref": "contracts/Vault.sol:270"
+        }
+      ],
+      "challenges": [
+        {
+          "axis": "privileges",
+          "statement": "The privileged function is operator-gated, which may make this a privileged-actor scenario rather than an attack.",
+          "strength": "strong",
+          "targets": [
+            "technical_claim"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "contracts/Vault.sol:270"
+            }
+          ]
+        },
+        {
+          "axis": "reachability",
+          "statement": "The relayer may enforce a selector allowlist elsewhere in the call chain.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path"
+          ],
+          "evidence": []
+        },
+        {
+          "axis": "state",
+          "statement": "The operator role assignment to the relayer may be a staging artifact rather than the mainnet configuration.",
+          "strength": "plausible",
+          "targets": [
+            "attack_path",
+            "impact"
+          ],
+          "evidence": []
+        }
+      ]
+    },
+    "challenge_matrix": [
+      {
+        "axis": "reachability",
+        "finding": "execute() is permissionless and applies no target or selector allowlist at any point in the chain.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:88-104"
+          }
+        ]
+      },
+      {
+        "axis": "preconditions",
+        "finding": "The only precondition is the operator role assignment, which the mainnet deployment file confirms.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/AccessRegistry.json"
+          }
+        ]
+      },
+      {
+        "axis": "privileges",
+        "finding": "The privileged call is made by the relayer, but the attacker controls both target and calldata, so the capability is effectively attacker-held.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:96-104"
+          }
+        ]
+      },
+      {
+        "axis": "state",
+        "finding": "No special state is required beyond the deployed role assignment.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/AccessRegistry.json"
+          }
+        ]
+      },
+      {
+        "axis": "impact",
+        "finding": "The executed test drains the vault balance to the attacker address.",
+        "support": "SUPPORTED",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testRelayerGrantsAllowance"
+          }
+        ]
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "Any address can call Relayer.execute().",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:88"
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "statement": "The relayer holds OPERATOR_ROLE in the mainnet deployment.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/AccessRegistry.json"
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "statement": "No selector or target allowlist constrains the forwarded call.",
+        "status": "PROVEN",
+        "decisive": true,
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:96-104"
+          }
+        ]
+      }
+    ],
+    "attack_path": [
+      {
+        "step": 1,
+        "actor_class": "permissionless",
+        "transition": "Attacker submits a relay request targeting the vault.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:88"
+          }
+        ]
+      },
+      {
+        "step": 2,
+        "actor_class": "permissionless",
+        "transition": "Calldata encodes approveFor(attacker, type(uint256).max).",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "forge test -m testRelayerGrantsAllowance"
+          }
+        ]
+      },
+      {
+        "step": 3,
+        "actor_class": "trusted_role",
+        "transition": "Relayer performs target.call(data) as the operator.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:96-104"
+          }
+        ]
+      },
+      {
+        "step": 4,
+        "actor_class": "protocol_controlled",
+        "transition": "Vault records an unlimited allowance for the attacker.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "allowance == type(uint256).max after the call"
+          }
+        ]
+      },
+      {
+        "step": 5,
+        "actor_class": "permissionless",
+        "transition": "Attacker transfers vault assets to itself.",
+        "status": "PROVEN",
+        "evidence": [
+          {
+            "kind": "execution",
+            "ref": "vault balance 0 after transferFrom"
+          }
+        ]
+      }
+    ],
+    "counterexamples": [
+      {
+        "id": "CE1",
+        "targets": [
+          "attack_path"
+        ],
+        "reason": "A selector allowlist would have blocked the forwarded call, but execute() applies none on any path.",
+        "strength": "plausible",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:96-104"
+          }
+        ],
+        "function": "Relayer.execute()",
+        "condition": "no allowlist check present"
+      }
+    ],
+    "decisive_facts": [
+      {
+        "fact": "execute() forwards attacker-controlled target and calldata without restriction.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "code",
+            "ref": "contracts/Relayer.sol:96-104"
+          }
+        ]
+      },
+      {
+        "fact": "The relayer holds OPERATOR_ROLE in the mainnet deployment file.",
+        "direction": "supports_finding",
+        "evidence": [
+          {
+            "kind": "config",
+            "ref": "deployments/mainnet/AccessRegistry.json"
+          }
+        ]
+      }
+    ],
+    "unresolved_questions": [],
+    "severity_challenge": {
+      "claimed_severity": "Critical",
+      "demonstrated_impact": "Unlimited allowance over vault assets granted to an arbitrary address",
+      "impact_class": "protocol_consequence",
+      "severity_support": "SUPPORTED",
+      "reproducible": "yes",
+      "bounded": "no",
+      "reversible": "no",
+      "persistent": "yes",
+      "attacker_requirements": "None beyond gas; the relay entry point is permissionless.",
+      "policy_alignment": "Matches the program's direct theft of user funds impact for smart contracts.",
+      "unproven_dependencies": []
+    },
+    "adjudication": {
+      "technical_claim": "SUPPORTED",
+      "attack_path": "SUPPORTED",
+      "impact": "SUPPORTED",
+      "severity_claim": "SUPPORTED",
+      "strongest_supporting_evidence": "execute() forwards unchecked attacker calldata while holding OPERATOR_ROLE.",
+      "strongest_opposing_evidence": "approveFor() is operator-gated, which superficially reads as intended privileged behavior.",
+      "counterargument_defeats_finding": "no",
+      "unresolved_assumptions": [],
+      "rationale": "The privileged function is real, but the attacker reaches it through a permissionless wrapper that supplies both target and calldata; the privilege gate protects nothing here."
+    },
+    "red_team_verdict": "technically_valid"
+  }
+}
