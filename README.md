@@ -51,16 +51,12 @@ Free Triager is technology-neutral. It derives the relevant technology and valid
 <tr><td>Blockchain and distributed-ledger implementations</td><td>Mixed findings that cross contracts, applications, nodes, bridges, or other system boundaries</td></tr>
 </table>
 
-A local codebase is useful but not mandatory when a black-box report contains sufficient reproducible evidence.
-
 ## Required Inputs
 
 <table>
 <tr><td>The report, supplied as a file path or pasted text</td><td>The program's public URL</td></tr>
-<tr><td>A workflow mode: <code>oneshot</code> or <code>dynamic</code></td><td>An optional path to the codebase or other technical evidence; the current directory is used by default when applicable</td></tr>
+<tr><td>A workflow mode: <code>oneshot</code> or <code>dynamic</code></td><td>An optional path to the codebase; If not provided the current directory will be used by default as codebase path</td></tr>
 </table>
-
-Private or authenticated platform guidance may also be supplied by the user. Free Triager records it as user-supplied material and does not claim independent access to private pages.
 
 ## Workflow Modes
 
